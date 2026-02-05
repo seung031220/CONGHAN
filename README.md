@@ -1,63 +1,48 @@
-# 에어팟 짝 찾아주기 - 실시간 가위바위보
+# 콩한쪽 — 잃어버린 에어팟을 건 운명의 게임
 
-2명의 플레이어가 실시간으로 가위바위보를 할 수 있는 웹 게임입니다.
+실시간 가위바위보로 에어팟 짝을 찾는 게임입니다.
 
-## 기능
+## 프로젝트 구조
 
-- 실시간 플레이어 매칭
-- WebSocket을 통한 실시간 통신
-- 가위바위보 게임 로직
-- 결과 표시 및 재게임
-
-## 설치 및 실행
-
-### 1. 의존성 설치
-
-```bash
-npm install
+```
+├── index.html          메인 페이지
+├── match.html          AI 매칭 페이지 (실시간 매칭으로 연결)
+├── matching.html       매칭 중 화면
+├── destiny.html        실시간 가위바위보 게임
+├── supabase-setup.sql Supabase 데이터베이스 설정
+└── README.md
 ```
 
-### 2. 서버 실행
+## 실행 방법
 
-```bash
-npm start
-```
+`index.html`을 브라우저에서 열면 됩니다.
 
-개발 모드 (자동 재시작):
+## 실시간 대전 설정 (Supabase)
 
-```bash
-npm run dev
-```
+1. **Supabase**에서 무료 프로젝트 생성 (https://supabase.com)
+2. **SQL Editor**에서 `supabase-setup.sql` 내용 복사 후 실행
+3. **Database > Replication**에서 `rooms`, `matchmaking` 테이블 Realtime **ON**
+4. **Settings > API**에서 Project URL, anon public key 복사
+5. `matching.html`과 `destiny.html` 상단의 `SUPABASE_URL`, `SUPABASE_ANON_KEY`에 붙여넣기
+6. 메인에서 **AI 매칭하기** 클릭 → 매칭 완료 후 게임 입장
 
-### 3. 브라우저에서 접속
+## 게임 플레이 방법
 
-서버가 실행되면 `index.html` 파일을 브라우저에서 열거나, 정적 파일 서버를 사용하세요.
-
-예시 (Python):
-
-```bash
-python -m http.server 8000
-```
-
-그 다음 `http://localhost:8000`에서 접속하세요.
-
-## 사용 방법
-
-1. 이름을 입력하고 "게임 참여하기" 버튼을 클릭합니다.
-2. 상대방이 매칭될 때까지 기다립니다.
-3. 가위, 바위, 보 중 하나를 선택합니다.
-4. 결과를 확인하고 "다시 하기"로 재게임할 수 있습니다.
-
-## 파일 구조
-
-- `index.html` - 메인 게임 페이지
-- `style.css` - 스타일시트
-- `game.js` - 클라이언트 측 게임 로직
-- `server.js` - WebSocket 서버
-- `package.json` - 프로젝트 설정
+1. 메인 페이지에서 "AI 매칭하기" 클릭
+2. 에어팟 정보 입력 (모델, 방향, 컨디션, 사용기간)
+3. "AI 매칭 돌리기" 클릭
+4. 매칭 완료 후 "게임 입장하기" 클릭
+5. 상대방이 매칭될 때까지 대기
+6. 가위, 바위, 보 중 하나를 선택
+7. 결과 확인
 
 ## 기술 스택
 
 - HTML/CSS/JavaScript (프론트엔드)
-- Node.js + WebSocket (백엔드)
-- WebSocket API (실시간 통신)
+- Supabase (실시간 데이터베이스 및 실시간 통신)
+- WebSocket (Supabase Realtime)
+
+## 디자인
+
+원본 디자인: [nerosonge/konghanjok](https://github.com/nerosonge/konghanjok)
+게임 로직: [PotatoKimJ/airpod2](https://github.com/PotatoKimJ/airpod2)

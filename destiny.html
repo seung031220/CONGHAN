@@ -679,6 +679,26 @@ a.btn-again:hover { opacity: 0.95; }
             const rtFinal = document.getElementById('realtimeFinal');
             const rtFinalTitle = document.getElementById('rtFinalTitle');
             const rtFinalDesc = document.getElementById('rtFinalDesc');
+
+            function resetChoicesUI() {
+                rtChoices.innerHTML = `
+                    <button class="choice-btn rt-choice" data-choice="가위">가위</button>
+                    <button class="choice-btn rt-choice" data-choice="바위">바위</button>
+                    <button class="choice-btn rt-choice" data-choice="보">보</button>
+                `;
+                rtChoices.removeAttribute('hidden');
+                rtChoices.classList.remove('hidden');
+                rtChoices.classList.add('choices');
+                if (!amPlayer1) {
+                    rtChoices.classList.add('player2-active');
+                }
+                rtChoices.style.display = 'flex';
+                rtChoices.style.visibility = 'visible';
+                rtChoices.style.opacity = '1';
+                rtChoices.style.height = 'auto';
+                rtChoices.style.width = 'auto';
+                rtChoices.style.position = 'relative';
+            }
             
             // 초기 상태 설정
             console.log(`방 입장 초기화 - ${amPlayer1 ? 'Player1' : 'Player2'} 버튼 숨김`);
@@ -810,6 +830,7 @@ a.btn-again:hover { opacity: 0.95; }
                     // 다른 UI 요소 숨기기
                     rtWaiting.style.display = 'none';
                     rtFinal.style.display = 'none';
+                    resetChoicesUI();
                     
                     // Player2를 위해 무조건 버튼 표시 (가장 먼저)
                     if (!amPlayer1) {

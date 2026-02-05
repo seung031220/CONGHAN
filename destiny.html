@@ -539,7 +539,34 @@ a.btn-again:hover { opacity: 0.95; }
                     // 상대방이 있을 때만 선택 버튼 표시
                     rtChoices.style.display = 'flex';
                     rtWaiting.style.display = 'none';
-                    rtChoices.querySelectorAll('.rt-choice').forEach(btn => btn.disabled = !!myChoice);
+                    rtChoices.querySelectorAll('.rt-choice').forEach(btn => {
+                        btn.disabled = !!myChoice;
+                        // 이벤트 리스너가 없으면 추가 (Player2 입장 시 대비)
+                        if (!btn.hasAttribute('data-listener-attached')) {
+                            btn.setAttribute('data-listener-attached', 'true');
+                            btn.onclick = async () => {
+                                if (btn.disabled) return; // 이미 선택했으면 무시
+                                const choice = btn.dataset.choice;
+                                console.log('선택:', choice, 'Player', amPlayer1 ? '1' : '2');
+                                if (amPlayer1) {
+                                    await supabase.from('rooms').update({ p1_choice: choice }).eq('id', roomId);
+                                } else {
+                                    await supabase.from('rooms').update({ p2_choice: choice }).eq('id', roomId);
+                                }
+                                const { data: room } = await supabase.from('rooms').select('*').eq('id', roomId).single();
+                                if (room && room.p1_choice && room.p2_choice && amPlayer1) {
+                                    const res = computeResult(room.p1_choice, room.p2_choice);
+                                    let ns1 = room.p1_score, ns2 = room.p2_score;
+                                    if (res === 'win') ns1++; else if (res === 'lose') ns2++;
+                                    await supabase.from('rooms').update({
+                                        p1_score: ns1,
+                                        p2_score: ns2,
+                                        status: 'done'
+                                    }).eq('id', roomId);
+                                }
+                            };
+                        }
+                    });
                     if (!myChoice) rtResultMsg.textContent = '';
                 }
             }
@@ -577,14 +604,32 @@ a.btn-again:hover { opacity: 0.95; }
             chRoom.subscribe();
             realtimeUnsub.push(chRoom);
 
+            // 선택 버튼에 이벤트 리스너 연결 (초기 설정)
             rtChoices.querySelectorAll('.rt-choice').forEach(btn => {
+                // 이미 리스너가 있으면 제거하고 다시 추가
+                btn.onclick = null;
+                btn.removeAttribute('data-listener-attached');
+                btn.setAttribute('data-listener-attached', 'true');
                 btn.onclick = async () => {
+                    if (btn.disabled) {
+                        console.log('이미 선택한 버튼입니다.');
+                        return;
+                    }
                     const choice = btn.dataset.choice;
+                    console.log('선택:', choice, 'Player', amPlayer1 ? '1' : '2', 'Room:', roomId);
+                    
+                    // 선택한 버튼 비활성화
+                    btn.disabled = true;
+                    rtChoices.querySelectorAll('.rt-choice').forEach(b => b.disabled = true);
+                    
                     if (amPlayer1) {
                         await supabase.from('rooms').update({ p1_choice: choice }).eq('id', roomId);
+                        console.log('Player1 선택 전송:', choice);
                     } else {
                         await supabase.from('rooms').update({ p2_choice: choice }).eq('id', roomId);
+                        console.log('Player2 선택 전송:', choice);
                     }
+                    
                     const { data: room } = await supabase.from('rooms').select('*').eq('id', roomId).single();
                     if (room && room.p1_choice && room.p2_choice && amPlayer1) {
                         const res = computeResult(room.p1_choice, room.p2_choice);

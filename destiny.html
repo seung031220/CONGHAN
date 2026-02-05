@@ -297,7 +297,8 @@ a.btn-again:hover { opacity: 0.95; }
 
             const chRooms = supabase.channel('my_rooms').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'rooms' }, async (payload) => {
                 const r = payload.new;
-                if (r && (r.player1_key === myKey || r.player2_key === myKey)) {
+                if (r && (r.player1_key === myKey || r.player2_key === myKey) && !realtimeRoomId) {
+                    // player2가 매칭될 때 처리
                     realtimeUnsub.forEach(ch => { try { ch.unsubscribe(); } catch(e) {} });
                     realtimeUnsub.length = 0;
                     enterRoom(supabase, r.id, myKey, r.player1_key, r.player2_key);
@@ -316,21 +317,23 @@ a.btn-again:hover { opacity: 0.95; }
 
                 if (p1 && p2 && (p1 === myKey || p2 === myKey)) {
                     if (p1 === myKey) {
+                        // player1인 경우: 방 생성
                         let { data: room } = await supabase.from('rooms').select('id').eq('player1_key', p1).eq('player2_key', p2).eq('status', 'playing').order('created_at', { ascending: false }).limit(1).single();
                         if (!room) {
                             const res = await supabase.from('rooms').insert({ player1_key: p1, player2_key: p2, round: 1, status: 'playing', p1_choice: null, p2_choice: null, p1_score: 0, p2_score: 0 }).select('id').single();
                             room = res.data;
                             if (room) await supabase.from('matchmaking').update({ player1_key: null, player2_key: null }).eq('id', 1);
                         }
-                        if (room) {
+                        if (room && !realtimeRoomId) {
                             if (realtimePollTimer) clearInterval(realtimePollTimer);
                             realtimePollTimer = null;
                             enterRoom(supabase, room.id, myKey, p1, p2);
                             return;
                         }
-                    } else {
+                    } else if (p2 === myKey) {
+                        // player2인 경우: 기존 방 찾기
                         const { data: existing } = await supabase.from('rooms').select('id').eq('player1_key', p1).eq('player2_key', p2).eq('status', 'playing').order('created_at', { ascending: false }).limit(1).single();
-                        if (existing) {
+                        if (existing && !realtimeRoomId) {
                             if (realtimePollTimer) clearInterval(realtimePollTimer);
                             realtimePollTimer = null;
                             enterRoom(supabase, existing.id, myKey, p1, p2);
@@ -356,7 +359,10 @@ a.btn-again:hover { opacity: 0.95; }
         }
 
         function enterRoom(supabase, roomId, myKey, p1Key, p2Key) {
-            if (realtimeRoomId) return;
+            // 이미 같은 방에 있으면 중복 진입 방지
+            if (realtimeRoomId === roomId) return;
+            
+            // 기존 연결 정리
             if (realtimePollTimer) clearInterval(realtimePollTimer);
             realtimePollTimer = null;
             realtimeUnsub.forEach(ch => { try { ch.unsubscribe(); } catch(e) {} });

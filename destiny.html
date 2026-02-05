@@ -610,6 +610,11 @@ a.btn-again:hover { opacity: 0.95; }
                     rtFinal.style.display = 'none';
                     
                     // 버튼 컨테이너 강제로 표시 (Player2를 위해 더 확실하게)
+                    // Player2를 위해 forceShowButtons 함수 호출
+                    if (!amPlayer1) {
+                        forceShowButtons();
+                    }
+                    
                     // 1. 기본 스타일 설정
                     rtChoices.style.display = 'flex';
                     rtChoices.style.visibility = 'visible';
@@ -631,6 +636,11 @@ a.btn-again:hover { opacity: 0.95; }
                         rtChoicesElement.style.display = 'flex';
                         rtChoicesElement.style.visibility = 'visible';
                         rtChoicesElement.removeAttribute('hidden');
+                    }
+                    
+                    // Player2를 위해 한 번 더 강제 표시
+                    if (!amPlayer1) {
+                        setTimeout(() => forceShowButtons(), 50);
                     }
                     
                     console.log(`✅ ${amPlayer1 ? 'Player1' : 'Player2'} 버튼 컨테이너 표시 완료:`, {
@@ -698,9 +708,7 @@ a.btn-again:hover { opacity: 0.95; }
                             // Player2의 경우 더 적극적으로 처리
                             if (!amPlayer1 && (rtChoices.style.display !== 'flex' || computedStyle.display !== 'flex' || rtChoices.offsetHeight === 0)) {
                                 console.warn(`⚠️ Player2 버튼이 여전히 숨겨져 있음, 강제 표시 시도`);
-                                rtChoices.style.display = 'flex';
-                                rtChoices.style.visibility = 'visible';
-                                rtChoices.setAttribute('style', 'display: flex !important; visibility: visible !important; opacity: 1 !important;');
+                                forceShowButtons();
                                 attachChoiceListeners();
                             }
                         }, 300);
@@ -719,9 +727,18 @@ a.btn-again:hover { opacity: 0.95; }
                                 
                                 if (checkButtons2.length > 0 && rtChoices.offsetHeight === 0) {
                                     console.warn('⚠️ Player2 버튼이 있지만 높이가 0, 강제 표시');
-                                    rtChoices.style.display = 'flex';
-                                    rtChoices.setAttribute('style', 'display: flex !important;');
+                                    forceShowButtons();
                                     attachChoiceListeners();
+                                }
+                                
+                                // Player2 최종 확인 및 강제 표시
+                                if (!amPlayer1) {
+                                    const finalComputed = window.getComputedStyle(rtChoices);
+                                    if (finalComputed.display !== 'flex' || rtChoices.offsetHeight === 0) {
+                                        console.warn('⚠️ Player2 최종 확인에서 문제 발견, 최종 강제 표시');
+                                        forceShowButtons();
+                                        attachChoiceListeners();
+                                    }
                                 }
                             }
                         }, 800);
@@ -735,6 +752,37 @@ a.btn-again:hover { opacity: 0.95; }
                 setTimeout(() => {
                     forceShowButtons();
                 }, 100);
+                
+                // Player2를 위한 지속적인 버튼 확인 폴링 (매 500ms마다)
+                const player2ButtonPoll = setInterval(() => {
+                    const choicesEl = document.getElementById('rtChoices');
+                    if (!choicesEl) {
+                        clearInterval(player2ButtonPoll);
+                        return;
+                    }
+                    
+                    const buttons = choicesEl.querySelectorAll('.rt-choice');
+                    const computedStyle = window.getComputedStyle(choicesEl);
+                    const isVisible = computedStyle.display === 'flex' && choicesEl.offsetHeight > 0;
+                    
+                    if (buttons.length > 0 && !isVisible) {
+                        console.warn('⚠️ Player2 폴링: 버튼이 숨겨져 있음, 강제 표시');
+                        forceShowButtons();
+                        attachChoiceListeners();
+                    }
+                    
+                    // 게임이 끝났거나 방을 나갔으면 폴링 중지
+                    if (realtimeRoomId !== roomId) {
+                        console.log('🛑 Player2 폴링 중지 (방 변경)');
+                        clearInterval(player2ButtonPoll);
+                    }
+                }, 500);
+                
+                // 10초 후 폴링 중지 (너무 오래 실행되지 않도록)
+                setTimeout(() => {
+                    clearInterval(player2ButtonPoll);
+                    console.log('🛑 Player2 폴링 중지 (타임아웃)');
+                }, 10000);
             }
             
             // 방 데이터를 가져와서 초기 렌더링 (Player1과 Player2 모두 동일하게 처리)
@@ -928,7 +976,17 @@ a.btn-again:hover { opacity: 0.95; }
                     const newBtn = oldBtn.cloneNode(true);
                     oldBtn.parentNode.replaceChild(newBtn, oldBtn);
                     
-                    console.log(`🔗 버튼 ${index + 1} 이벤트 리스너 추가:`, newBtn.dataset.choice);
+                    console.log(`🔗 버튼 ${index + 1} 이벤트 리스너 추가:`, newBtn.dataset.choice, `Player ${amPlayer1 ? '1' : '2'}`);
+                    
+                    // Player2를 위해 버튼 상태 확인 및 강제 활성화
+                    if (!amPlayer1) {
+                        newBtn.style.pointerEvents = 'auto';
+                        newBtn.style.cursor = 'pointer';
+                        newBtn.style.opacity = '1';
+                        newBtn.removeAttribute('disabled');
+                        newBtn.disabled = false;
+                        console.log(`✅ Player2 버튼 ${index + 1} 강제 활성화:`, newBtn.dataset.choice);
+                    }
                     
                     // 클릭 이벤트 리스너 추가
                     newBtn.addEventListener('click', async function(e) {

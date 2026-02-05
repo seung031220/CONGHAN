@@ -470,7 +470,9 @@ a.btn-again:hover { opacity: 0.95; }
             document.getElementById('rtResultMsg').textContent = '';
             document.getElementById('rtMyScore').textContent = '0';
             document.getElementById('rtOppScore').textContent = '0';
-            document.getElementById('rtRoundInfo').textContent = '1판';
+            const roundEl = document.getElementById('rtRoundInfo');
+            if (roundEl) roundEl.textContent = '';
+            foundToastShown = false;
             
             console.log('매칭 종료 및 정리 완료');
         }
@@ -538,7 +540,7 @@ a.btn-again:hover { opacity: 0.95; }
                             .eq('id', 1)
                             .is('player1_key', null)
                             .select('*')
-                            .single();
+                            .maybeSingle();
                         if (updated && updated.player1_key === myKey) return 'player1';
                     } else if (!q.player2_key && q.player1_key !== myKey) {
                         const { data: updated } = await supabase
@@ -548,7 +550,7 @@ a.btn-again:hover { opacity: 0.95; }
                             .is('player2_key', null)
                             .neq('player1_key', myKey)
                             .select('*')
-                            .single();
+                            .maybeSingle();
                         if (updated && updated.player2_key === myKey) return 'player2';
                     } else {
                         return 'full';
@@ -696,7 +698,15 @@ a.btn-again:hover { opacity: 0.95; }
                     // player1인 경우에만 방 생성 (중복 방지)
                     if (p1 === myKey) {
                         // 이미 생성된 방이 있는지 확인
-                        let { data: room } = await supabase.from('rooms').select('id, player1_key, player2_key').eq('player1_key', p1).eq('player2_key', p2).eq('status', 'playing').order('created_at', { ascending: false }).limit(1).single();
+                        let { data: room } = await supabase
+                            .from('rooms')
+                            .select('id, player1_key, player2_key')
+                            .eq('player1_key', p1)
+                            .eq('player2_key', p2)
+                            .eq('status', 'playing')
+                            .order('created_at', { ascending: false })
+                            .limit(1)
+                            .maybeSingle();
                         
                         if (!room) {
                             // 새 방 생성
@@ -737,7 +747,7 @@ a.btn-again:hover { opacity: 0.95; }
                             .eq('status', 'playing')
                             .order('created_at', { ascending: false })
                             .limit(1)
-                            .single();
+                            .maybeSingle();
 
                         if (existingRoom && !realtimeRoomId && existingRoom.player1_key && existingRoom.player2_key) {
                             if (realtimePollTimer) clearInterval(realtimePollTimer);
@@ -758,7 +768,7 @@ a.btn-again:hover { opacity: 0.95; }
                         .eq('status', 'playing')
                         .order('created_at', { ascending: false })
                         .limit(1)
-                        .single();
+                        .maybeSingle();
 
                     if (myRoom && myRoom.player1_key && myRoom.player2_key) {
                         if (realtimePollTimer) clearInterval(realtimePollTimer);
@@ -775,6 +785,7 @@ a.btn-again:hover { opacity: 0.95; }
 
         async function enterRoom(supabase, roomId, myKey, p1Key, p2Key) {
             console.log('🚪 enterRoom 함수 시작:', { roomId, myKey, p1Key, p2Key });
+            foundToastShown = false;
             
             // 이미 같은 방에 있으면 중복 진입 방지
             if (realtimeRoomId === roomId) {
@@ -1050,6 +1061,14 @@ a.btn-again:hover { opacity: 0.95; }
                         rtWaiting.style.display = 'block';
                     }
                 } else {
+                    // 내가 이미 선택했고 상대가 아직이면 긴박 대기 UI
+                    if (myChoice && !oppChoice) {
+                        rtChoices.style.display = 'none';
+                        rtWaiting.style.display = 'block';
+                        rtResultMsg.textContent = '';
+                        return;
+                    }
+
                     // 상대방이 있을 때만 선택 버튼 표시
                     console.log(`🎮 ${amPlayer1 ? 'Player1' : 'Player2'} 게임 진행 중 - 버튼 표시 시작`, { 
                         myChoice, 

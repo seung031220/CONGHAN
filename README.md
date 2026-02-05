@@ -19,12 +19,23 @@
 
 ## 실시간 대전 설정 (Supabase)
 
+### 로컬 개발
 1. **Supabase**에서 무료 프로젝트 생성 (https://supabase.com)
 2. **SQL Editor**에서 `supabase-setup.sql` 내용 복사 후 실행
 3. **Database > Replication**에서 `rooms`, `matchmaking` 테이블 Realtime **ON**
 4. **Settings > API**에서 Project URL, anon public key 복사
 5. `matching.html`과 `destiny.html` 상단의 `SUPABASE_URL`, `SUPABASE_ANON_KEY`에 붙여넣기
 6. 메인에서 **AI 매칭하기** 클릭 → 매칭 완료 후 게임 입장
+
+### Vercel 배포
+자세한 배포 가이드는 `DEPLOY.md` 파일을 참고하세요.
+
+**간단 요약:**
+1. Supabase 설정 완료 (위 단계 1-4)
+2. 코드에 Supabase URL/키 설정
+3. GitHub에 푸시
+4. Vercel에서 GitHub 저장소 연결 및 배포
+5. Supabase CORS 설정에 Vercel 도메인 추가
 
 ## 게임 플레이 방법
 

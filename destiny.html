@@ -94,16 +94,28 @@ a.back:hover { color: var(--ink); }
 
 .choices { display: flex; justify-content: center; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }
 .choice-btn {
-  padding: 20px 28px;
+  padding: 16px 22px;
   border-radius: 16px;
   border: 2px solid var(--border);
   background: var(--surface);
   color: var(--ink);
-  font-size: 1.2rem;
+  font-size: 1.05rem;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.2s;
   min-width: 100px;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.choice-btn .choice-emoji {
+  font-size: 1.6rem;
+  line-height: 1;
+}
+.choice-btn .choice-label {
+  font-size: 0.95rem;
+  letter-spacing: -0.2px;
 }
 .choice-btn:hover {
   border-color: var(--brand);
@@ -152,7 +164,6 @@ a.back:hover { color: var(--ink); }
 .final-panel h2 { margin: 0 0 16px; font-size: 1.5rem; }
 .final-panel.win h2 { color: #4ade80; }
 .final-panel.lose h2 { color: #f87171; }
-.final-panel.draw h2 { color: var(--muted); }
 
 .realtime-status {
   font-size: 1.1rem;
@@ -206,9 +217,18 @@ a.btn-again:hover { opacity: 0.95; }
             <div id="rtRoundInfo" class="round-info">1판</div>
 
             <div id="rtChoices" class="choices" style="display: none;">
-                <button class="choice-btn rt-choice" data-choice="가위">가위</button>
-                <button class="choice-btn rt-choice" data-choice="바위">바위</button>
-                <button class="choice-btn rt-choice" data-choice="보">보</button>
+                <button class="choice-btn rt-choice" data-choice="가위">
+                    <span class="choice-emoji">✌️</span>
+                    <span class="choice-label">가위</span>
+                </button>
+                <button class="choice-btn rt-choice" data-choice="바위">
+                    <span class="choice-emoji">✊</span>
+                    <span class="choice-label">바위</span>
+                </button>
+                <button class="choice-btn rt-choice" data-choice="보">
+                    <span class="choice-emoji">🖐️</span>
+                    <span class="choice-label">보</span>
+                </button>
             </div>
 
             <div id="rtResultMsg" class="result-msg"></div>
@@ -682,9 +702,18 @@ a.btn-again:hover { opacity: 0.95; }
 
             function resetChoicesUI() {
                 rtChoices.innerHTML = `
-                    <button class="choice-btn rt-choice" data-choice="가위">가위</button>
-                    <button class="choice-btn rt-choice" data-choice="바위">바위</button>
-                    <button class="choice-btn rt-choice" data-choice="보">보</button>
+                    <button class="choice-btn rt-choice" data-choice="가위">
+                        <span class="choice-emoji">✌️</span>
+                        <span class="choice-label">가위</span>
+                    </button>
+                    <button class="choice-btn rt-choice" data-choice="바위">
+                        <span class="choice-emoji">✊</span>
+                        <span class="choice-label">바위</span>
+                    </button>
+                    <button class="choice-btn rt-choice" data-choice="보">
+                        <span class="choice-emoji">🖐️</span>
+                        <span class="choice-label">보</span>
+                    </button>
                 `;
                 rtChoices.removeAttribute('hidden');
                 rtChoices.classList.remove('hidden');
@@ -795,10 +824,6 @@ a.btn-again:hover { opacity: 0.95; }
                         rtFinalTitle.textContent = '패배';
                         rtFinalDesc.textContent = '다음 기회를 노려보세요.';
                         rtFinal.className = 'final-panel visible lose';
-                    } else {
-                        rtFinalTitle.textContent = '무승부';
-                        rtFinalDesc.textContent = '다시 도전해보세요.';
-                        rtFinal.className = 'final-panel visible draw';
                     }
                     return;
                 }
@@ -811,8 +836,23 @@ a.btn-again:hover { opacity: 0.95; }
                     else if (res === 'lose') resText = '패배';
                     else resText = '무승부';
                     rtResultMsg.textContent = '나: ' + myChoice + ' vs 상대: ' + oppChoice + ' → ' + resText;
-                    rtChoices.style.display = 'none';
-                    rtWaiting.style.display = 'block';
+
+                    if (res === 'draw') {
+                        rtWaiting.style.display = 'none';
+                        resetChoicesUI();
+                        rtChoices.style.display = 'flex';
+                        rtChoices.querySelectorAll('.rt-choice').forEach(b => {
+                            b.disabled = false;
+                            b.removeAttribute('disabled');
+                            b.style.opacity = '1';
+                            b.style.cursor = 'pointer';
+                            b.style.pointerEvents = 'auto';
+                        });
+                        rtResultMsg.textContent = '무승부! 다시 선택하세요.';
+                    } else {
+                        rtChoices.style.display = 'none';
+                        rtWaiting.style.display = 'block';
+                    }
                 } else {
                     // 상대방이 있을 때만 선택 버튼 표시
                     console.log(`🎮 ${amPlayer1 ? 'Player1' : 'Player2'} 게임 진행 중 - 버튼 표시 시작`, { 
@@ -1212,6 +1252,15 @@ a.btn-again:hover { opacity: 0.95; }
                 if (!room || room.status !== 'playing' || !room.p1_choice || !room.p2_choice || !amPlayer1) return;
                 const res = computeResult(room.p1_choice, room.p2_choice);
                 let ns1 = room.p1_score || 0, ns2 = room.p2_score || 0;
+                if (res === 'draw') {
+                    await supabase.from('rooms').update({
+                        p1_choice: null,
+                        p2_choice: null,
+                        status: 'playing'
+                    }).eq('id', roomId);
+                    return;
+                }
+
                 if (res === 'win') ns1++; else if (res === 'lose') ns2++;
                 await supabase.from('rooms').update({
                     p1_score: ns1,

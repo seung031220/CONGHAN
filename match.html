@@ -56,9 +56,33 @@ body {
 
 h1 {
   font-size: 1.5rem;
-  margin: 0 0 24px;
+  margin: 0 0 16px;
   font-weight: 800;
 }
+
+/* 랜덤 이름 배지 */
+.my-nickname-wrap {
+  margin-bottom: 24px;
+  padding: 14px 18px;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.my-nickname-wrap .label { font-size: 0.9rem; color: var(--muted); font-weight: 600; }
+.my-nickname-wrap .name {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--ink);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.my-nickname-wrap .name .emoji { font-size: 1.4rem; }
 
 .card {
   background: var(--surface-strong);
@@ -99,6 +123,46 @@ h1 {
 }
 
 .input-group + .input-group { margin-top: 18px; }
+
+/* 보유 중인 유닛: 좌/우 아이콘 선택 */
+.unit-picker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  margin-top: 8px;
+}
+.unit-option {
+  flex: 1;
+  max-width: 140px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 20px 16px;
+  border-radius: var(--radius-sm);
+  border: 2px solid rgba(160, 80, 80, 0.35);
+  background: rgba(255, 255, 255, 0.95);
+  color: #1a0f0f;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s, transform 0.15s;
+}
+.unit-option:hover {
+  border-color: var(--brand);
+  background: #fff;
+}
+.unit-option.selected {
+  border-color: var(--brand);
+  background: rgba(192, 57, 43, 0.12);
+  color: var(--brand-strong);
+}
+.unit-option .unit-icon {
+  font-size: 2.5rem;
+  line-height: 1;
+}
+.unit-option input { display: none; }
 
 .slider-row { display: flex; align-items: center; gap: 12px; }
 .slider-row input[type="range"] { flex: 1; }
@@ -193,26 +257,39 @@ h1 {
     <div class="shell">
         <a href="index.html" class="back">← 메인으로</a>
         <h1>AI 매칭</h1>
+        <div class="my-nickname-wrap">
+            <span class="label">당신의 이름</span>
+            <span class="name" id="myNicknameDisplay"><span class="emoji" id="myNicknameEmoji">🐯</span><span id="myNicknameText">날아가는 호랑이</span></span>
+        </div>
 
         <form id="match-form" class="card">
             <div class="input-group">
                 <label for="model">보유 중인 모델</label>
                 <select id="model" name="model" required>
-                    <option value="">선택</option>
-                    <option value="AirPods Pro 2">AirPods Pro 2</option>
-                    <option value="AirPods Pro 1">AirPods Pro 1</option>
+                    <option value="AirPods Pro 2 (2세대)" selected>AirPods Pro 2 (2세대)</option>
+                    <option value="AirPods 4">AirPods 4</option>
                     <option value="AirPods 3">AirPods 3</option>
+                    <option value="AirPods Pro 2 (1세대)">AirPods Pro 2 (1세대)</option>
+                    <option value="AirPods Max">AirPods Max</option>
+                    <option value="AirPods Pro 1">AirPods Pro 1</option>
                     <option value="AirPods 2">AirPods 2</option>
                 </select>
             </div>
 
             <div class="input-group">
-                <label for="side">보유 중인 방향</label>
-                <select id="side" name="side" required>
-                    <option value="">선택</option>
-                    <option value="left">좌측만 남았어요</option>
-                    <option value="right">우측만 남았어요</option>
-                </select>
+                <label>보유 중인 유닛</label>
+                <div class="unit-picker" role="group" aria-label="보유 중인 유닛 선택">
+                    <label class="unit-option" data-unit="left">
+                        <input type="radio" name="side" value="left" required>
+                        <span class="unit-icon" aria-hidden="true">◀</span>
+                        <span>좌측만</span>
+                    </label>
+                    <label class="unit-option" data-unit="right">
+                        <input type="radio" name="side" value="right">
+                        <span class="unit-icon" aria-hidden="true">▶</span>
+                        <span>우측만</span>
+                    </label>
+                </div>
             </div>
 
             <div class="input-group">
@@ -256,6 +333,35 @@ h1 {
     </div>
 
     <script>
+        const ADJECTIVES = [
+            '날아가는', '재빠른', '용감한', '영리한', '발빠른', '느긋한', '쿨한', '달콤한', '날쎈', '유쾌한',
+            '든든한', '상냥한', '충실한', '빛나는', '재치있는', '씩씩한', '당당한', '열정적인', '차가운', '따뜻한',
+            '신비로운', '명랑한', '조용한', '활발한', '지혜로운', '날렵한', '귀여운', '멋진', '달리는', '헤엄치는'
+        ];
+        const ANIMALS = [
+            { name: '호랑이', emoji: '🐯' }, { name: '거북이', emoji: '🐢' }, { name: '사자', emoji: '🦁' },
+            { name: '여우', emoji: '🦊' }, { name: '토끼', emoji: '🐰' }, { name: '코알라', emoji: '🐨' },
+            { name: '펭귄', emoji: '🐧' }, { name: '판다', emoji: '🐼' }, { name: '독수리', emoji: '🦅' },
+            { name: '오리', emoji: '🦆' }, { name: '곰', emoji: '🐻' }, { name: '고양이', emoji: '🐱' },
+            { name: '강아지', emoji: '🐶' }, { name: '나비', emoji: '🦋' }, { name: '원숭이', emoji: '🐵' },
+            { name: '늑대', emoji: '🐺' }, { name: '코끼리', emoji: '🐘' }, { name: '기린', emoji: '🦒' },
+            { name: '사슴', emoji: '🦌' }, { name: '올빼미', emoji: '🦉' }, { name: '돌고래', emoji: '🐬' },
+            { name: '하마', emoji: '🦛' }, { name: '얼룩말', emoji: '🦓' }
+        ];
+        function getRandomCode() {
+            const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+            let code = '';
+            for (let i = 0; i < 4; i++) code += chars[Math.floor(Math.random() * chars.length)];
+            return code;
+        }
+        function pickRandomName() {
+            const adj = ADJECTIVES[Math.floor(Math.random() * ADJECTIVES.length)];
+            const animal = ANIMALS[Math.floor(Math.random() * ANIMALS.length)];
+            const code = getRandomCode();
+            return { adjective: adj, animal: animal, code: code, label: adj + ' ' + animal.name, emoji: animal.emoji };
+        }
+        let currentNickname = null;
+
         const usageInput = document.getElementById('usageMonths');
         const usageValue = document.getElementById('usageValue');
         const matchForm = document.getElementById('match-form');
@@ -263,9 +369,27 @@ h1 {
         const resultContent = document.getElementById('resultContent');
         const gameEntryBtn = document.getElementById('gameEntryBtn');
 
+        (function assignRandomNickname() {
+            currentNickname = pickRandomName();
+            document.getElementById('myNicknameEmoji').textContent = currentNickname.emoji;
+            document.getElementById('myNicknameText').textContent = currentNickname.label + ' #' + currentNickname.code;
+        })();
+
         usageInput.addEventListener('input', () => {
             usageValue.textContent = usageInput.value + '개월';
         });
+
+        // 보유 중인 유닛: 라디오 선택 시 .selected 토글
+        const unitOptions = document.querySelectorAll('.unit-option');
+        function syncUnitSelected() {
+            unitOptions.forEach(el => {
+                el.classList.toggle('selected', el.querySelector('input[name="side"]').checked);
+            });
+        }
+        document.querySelectorAll('input[name="side"]').forEach(radio => {
+            radio.addEventListener('change', syncUnitSelected);
+        });
+        syncUnitSelected();
 
         matchForm.addEventListener('submit', (e) => {
             e.preventDefault();
@@ -280,7 +404,10 @@ h1 {
                 model: model,
                 side: side,
                 condition: condition,
-                usageMonths: usageMonths
+                usageMonths: usageMonths,
+                myNickname: currentNickname ? currentNickname.label : '플레이어',
+                myEmoji: currentNickname ? currentNickname.emoji : '🎧',
+                myCode: currentNickname ? currentNickname.code : getRandomCode()
             };
             sessionStorage.setItem('matchPending', JSON.stringify(matchData));
             location.href = 'matching.html';

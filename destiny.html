@@ -90,9 +90,11 @@ a.back:hover { color: var(--ink); }
   font-size: 1.5rem;
   font-weight: 800;
 }
-.score-board span { font-size: 2.4rem; font-weight: 900; }
-.score-board .my-score span { color: #60a5fa; }
-.score-board .opp-score span { color: #f87171; }
+.score-board #myNameDisplay,
+.score-board #oppNameDisplay { font-size: 1.05rem; font-weight: 700; }
+.score-board .score-num { font-size: 2.4rem; font-weight: 900; }
+.score-board .my-score .score-num { color: #60a5fa; }
+.score-board .opp-score .score-num { color: #f87171; }
 
 .choices { display: flex; justify-content: center; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }
 .choice-btn {
@@ -329,8 +331,8 @@ a.btn-again:hover { opacity: 0.95; }
             <div id="realtimeStatus" class="realtime-status">상대를 찾는 중...</div>
             
             <div class="score-board">
-                <div class="my-score">나: <span id="rtMyScore">0</span></div>
-                <div class="opp-score">상대: <span id="rtOppScore">0</span></div>
+                <div class="my-score"><span id="myNameDisplay">나</span>: <span id="rtMyScore" class="score-num">0</span></div>
+                <div class="opp-score"><span id="oppNameDisplay">상대</span>: <span id="rtOppScore" class="score-num">0</span></div>
             </div>
 
             <div id="rtChoices" class="choices" style="display: none;">
@@ -379,6 +381,56 @@ a.btn-again:hover { opacity: 0.95; }
         const SUPABASE_ANON_KEY = 'sb_publishable_T8l7VJH5FmJqrYwohTzzGw_k8gep3T0';
 
         const CHOICES = ['가위', '바위', '보'];
+
+        const ADJECTIVES = [
+            '날아가는', '재빠른', '용감한', '영리한', '발빠른', '느긋한', '쿨한', '달콤한', '날쎈', '유쾌한',
+            '든든한', '상냥한', '충실한', '빛나는', '재치있는', '씩씩한', '당당한', '열정적인', '차가운', '따뜻한',
+            '신비로운', '명랑한', '조용한', '활발한', '지혜로운', '날렵한', '귀여운', '멋진', '달리는', '헤엄치는'
+        ];
+        const ANIMALS = [
+            { name: '호랑이', emoji: '🐯' }, { name: '거북이', emoji: '🐢' }, { name: '사자', emoji: '🦁' },
+            { name: '여우', emoji: '🦊' }, { name: '토끼', emoji: '🐰' }, { name: '코알라', emoji: '🐨' },
+            { name: '펭귄', emoji: '🐧' }, { name: '판다', emoji: '🐼' }, { name: '독수리', emoji: '🦅' },
+            { name: '오리', emoji: '🦆' }, { name: '곰', emoji: '🐻' }, { name: '고양이', emoji: '🐱' },
+            { name: '강아지', emoji: '🐶' }, { name: '나비', emoji: '🦋' }, { name: '원숭이', emoji: '🐵' },
+            { name: '늑대', emoji: '🐺' }, { name: '코끼리', emoji: '🐘' }, { name: '기린', emoji: '🦒' },
+            { name: '사슴', emoji: '🦌' }, { name: '올빼미', emoji: '🦉' }, { name: '돌고래', emoji: '🐬' },
+            { name: '하마', emoji: '🦛' }, { name: '얼룩말', emoji: '🦓' }
+        ];
+        function getRandomCode() {
+            const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+            let code = '';
+            for (let i = 0; i < 4; i++) code += chars[Math.floor(Math.random() * chars.length)];
+            return code;
+        }
+        function pickRandomName() {
+            const adj = ADJECTIVES[Math.floor(Math.random() * ADJECTIVES.length)];
+            const animal = ANIMALS[Math.floor(Math.random() * ANIMALS.length)];
+            const code = getRandomCode();
+            return { label: adj + ' ' + animal.name, emoji: animal.emoji, code: code };
+        }
+        let myDisplayLabel = '나';
+        let oppDisplayLabel = '상대';
+
+        (function initPlayerNames() {
+            try {
+                const raw = sessionStorage.getItem('matchPending');
+                if (raw) {
+                    const data = JSON.parse(raw);
+                    const myNickname = data.myNickname || '나';
+                    const myEmoji = data.myEmoji || '🎧';
+                    const myCode = data.myCode || getRandomCode();
+                    myDisplayLabel = myEmoji + ' ' + myNickname + ' #' + myCode;
+                    const opp = pickRandomName();
+                    oppDisplayLabel = opp.emoji + ' ' + opp.label + ' #' + opp.code;
+                }
+                document.getElementById('myNameDisplay').textContent = myDisplayLabel;
+                document.getElementById('oppNameDisplay').textContent = oppDisplayLabel;
+            } catch (e) {
+                document.getElementById('myNameDisplay').textContent = '나';
+                document.getElementById('oppNameDisplay').textContent = '상대';
+            }
+        })();
 
         function getMyKey() {
             // 탭(세션)별로 고유 키를 사용해 동일 브라우저 다중 탭 충돌 방지
@@ -1042,7 +1094,7 @@ a.btn-again:hover { opacity: 0.95; }
                     if (res === 'win') resText = '승리!';
                     else if (res === 'lose') resText = '패배';
                     else resText = '무승부';
-                    rtResultMsg.textContent = '나: ' + myChoice + ' vs 상대: ' + oppChoice + ' → ' + resText;
+                    rtResultMsg.textContent = myDisplayLabel + ': ' + myChoice + ' vs ' + oppDisplayLabel + ': ' + oppChoice + ' → ' + resText;
 
                     if (res === 'draw') {
                         rtWaiting.style.display = 'none';

@@ -1031,12 +1031,22 @@ a.btn-again:hover { opacity: 0.95; }
             const chRoom = supabase.channel('room_' + roomId.replace(/-/g, '_')).on('postgres_changes', { event: '*', schema: 'public', table: 'rooms', filter: 'id=eq.' + roomId }, async (payload) => {
                 if (payload.new) {
                     console.log(`🔄 ${amPlayer1 ? 'Player1' : 'Player2'} 방 상태 변경 감지:`, payload.new);
+                    
+                    // Player2를 위해 버튼 강제 표시 (renderRoom 전에)
+                    if (!amPlayer1) {
+                        rtChoices.classList.add('player2-active');
+                        forceShowButtons();
+                    }
+                    
                     renderRoom(payload.new);
                     await applyScoreIfBothChose(payload.new);
                     
-                    // Player2를 위해 버튼 강제 표시
+                    // Player2를 위해 버튼 강제 표시 (renderRoom 후에도)
                     if (!amPlayer1) {
-                        forceShowButtons();
+                        setTimeout(() => {
+                            rtChoices.classList.add('player2-active');
+                            forceShowButtons();
+                        }, 100);
                     }
                     
                     // renderRoom 후에 이벤트 리스너 확인 및 재연결 (Player2를 위해 더 확실하게)

@@ -516,11 +516,26 @@ a.btn-again:hover { opacity: 0.95; }
             const rtFinalDesc = document.getElementById('rtFinalDesc');
             
             // 초기 상태 설정
-            console.log('방 입장 초기화 - 버튼 숨김');
+            console.log(`방 입장 초기화 - ${amPlayer1 ? 'Player1' : 'Player2'} 버튼 숨김`);
             rtChoices.style.display = 'none';
             rtChoices.style.visibility = 'hidden';
             rtWaiting.style.display = 'none';
             rtFinal.style.display = 'none';
+            
+            // Player2를 위한 즉시 버튼 표시 함수 (renderRoom 전에 실행)
+            function forceShowButtons() {
+                console.log(`🔧 ${amPlayer1 ? 'Player1' : 'Player2'} 버튼 강제 표시 함수 실행`);
+                const choicesEl = document.getElementById('rtChoices');
+                if (choicesEl) {
+                    choicesEl.style.display = 'flex';
+                    choicesEl.style.visibility = 'visible';
+                    choicesEl.style.opacity = '1';
+                    choicesEl.removeAttribute('hidden');
+                    choicesEl.classList.remove('hidden');
+                    choicesEl.setAttribute('style', 'display: flex !important; visibility: visible !important; opacity: 1 !important;');
+                    console.log(`✅ ${amPlayer1 ? 'Player1' : 'Player2'} 버튼 강제 표시 완료`);
+                }
+            }
 
             function renderRoom(room) {
                 // 상대방이 없으면 게임 UI 숨김
@@ -714,11 +729,19 @@ a.btn-again:hover { opacity: 0.95; }
                 }
             }
 
+            // Player2를 위해 즉시 버튼 표시 시도 (데이터 로드 전)
+            if (!amPlayer1) {
+                console.log('🚀 Player2 즉시 버튼 표시 시도');
+                setTimeout(() => {
+                    forceShowButtons();
+                }, 100);
+            }
+            
             // 방 데이터를 가져와서 초기 렌더링 (Player1과 Player2 모두 동일하게 처리)
             console.log(`📥 ${amPlayer1 ? 'Player1' : 'Player2'} 방 데이터 로드 시작...`);
             supabase.from('rooms').select('*').eq('id', roomId).single().then(({ data, error }) => { 
                 if (error) {
-                    console.error('❌ 방 데이터 조회 오류:', error);
+                    console.error(`❌ ${amPlayer1 ? 'Player1' : 'Player2'} 방 데이터 조회 오류:`, error);
                     document.getElementById('realtimeStatus').textContent = '상대방을 찾는 중...';
                     document.getElementById('rtChoices').style.display = 'none';
                     return;
@@ -737,6 +760,11 @@ a.btn-again:hover { opacity: 0.95; }
                     // renderRoom 호출
                     renderRoom(data);
                     
+                    // Player2를 위해 즉시 버튼 강제 표시
+                    if (!amPlayer1) {
+                        forceShowButtons();
+                    }
+                    
                     console.log(`🔍 ${amPlayer1 ? 'Player1' : 'Player2'} 버튼 표시 후 rtChoices 상태:`, {
                         display: rtChoices.style.display,
                         visibility: rtChoices.style.visibility,
@@ -749,6 +777,12 @@ a.btn-again:hover { opacity: 0.95; }
                     // renderRoom 후에 이벤트 리스너 다시 연결 (Player2를 위해 더 확실하게)
                     setTimeout(() => {
                         console.log(`🔗 ${amPlayer1 ? 'Player1' : 'Player2'} renderRoom 후 이벤트 리스너 재연결`);
+                        
+                        // Player2를 위해 버튼 다시 강제 표시
+                        if (!amPlayer1) {
+                            forceShowButtons();
+                        }
+                        
                         attachChoiceListeners();
                         
                         // 버튼이 정말 보이는지 최종 확인 (Player2 특별 확인)
@@ -769,9 +803,7 @@ a.btn-again:hover { opacity: 0.95; }
                         }
                         if (rtChoices.offsetHeight === 0 || computedStyle.display === 'none') {
                             console.warn(`⚠️ ${amPlayer1 ? 'Player1' : 'Player2'} 버튼 컨테이너가 숨겨져 있습니다! 강제 표시 시도`);
-                            rtChoices.style.display = 'flex';
-                            rtChoices.style.visibility = 'visible';
-                            rtChoices.setAttribute('style', 'display: flex !important; visibility: visible !important; opacity: 1 !important;');
+                            forceShowButtons();
                             
                             // 다시 한 번 확인
                             setTimeout(() => {
@@ -783,10 +815,33 @@ a.btn-again:hover { opacity: 0.95; }
                                 });
                                 if (recheck.length > 0 && rtChoices.offsetHeight > 0) {
                                     attachChoiceListeners();
+                                } else if (!amPlayer1) {
+                                    // Player2의 경우 더 적극적으로
+                                    console.warn('⚠️ Player2 버튼이 여전히 안 보임, 최종 강제 표시');
+                                    forceShowButtons();
+                                    attachChoiceListeners();
                                 }
-                            }, 200);
+                            }, 300);
                         }
                     }, 500);
+                    
+                    // Player2를 위해 추가 확인 (1초 후)
+                    if (!amPlayer1) {
+                        setTimeout(() => {
+                            const player2Check = rtChoices.querySelectorAll('.rt-choice');
+                            const player2Computed = window.getComputedStyle(rtChoices);
+                            console.log('🔍 Player2 추가 확인 (1초 후):', {
+                                버튼개수: player2Check.length,
+                                표시: player2Computed.display,
+                                높이: rtChoices.offsetHeight
+                            });
+                            if (player2Computed.display !== 'flex' || rtChoices.offsetHeight === 0) {
+                                console.warn('⚠️ Player2 버튼 문제 감지, 최종 수정 시도');
+                                forceShowButtons();
+                                attachChoiceListeners();
+                            }
+                        }, 1000);
+                    }
                 } else {
                     console.error(`❌ ${amPlayer1 ? 'Player1' : 'Player2'} 방 데이터를 찾을 수 없습니다:`, roomId);
                     document.getElementById('realtimeStatus').textContent = '상대방을 찾는 중...';
@@ -814,6 +869,11 @@ a.btn-again:hover { opacity: 0.95; }
                     renderRoom(payload.new);
                     await applyScoreIfBothChose(payload.new);
                     
+                    // Player2를 위해 버튼 강제 표시
+                    if (!amPlayer1) {
+                        forceShowButtons();
+                    }
+                    
                     // renderRoom 후에 이벤트 리스너 확인 및 재연결 (Player2를 위해 더 확실하게)
                     setTimeout(() => {
                         const buttons = rtChoices.querySelectorAll('.rt-choice');
@@ -836,9 +896,14 @@ a.btn-again:hover { opacity: 0.95; }
                             }
                         } else {
                             console.warn(`⚠️ ${amPlayer1 ? 'Player1' : 'Player2'} 버튼이 표시되지 않음, 강제 표시 시도`);
-                            rtChoices.style.display = 'flex';
-                            rtChoices.setAttribute('style', 'display: flex !important;');
-                            setTimeout(() => attachChoiceListeners(), 100);
+                            forceShowButtons();
+                            setTimeout(() => {
+                                attachChoiceListeners();
+                                // Player2의 경우 한 번 더 확인
+                                if (!amPlayer1) {
+                                    forceShowButtons();
+                                }
+                            }, 100);
                         }
                     }, 200);
                 }

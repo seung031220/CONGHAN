@@ -398,7 +398,7 @@ a.btn-again:hover { opacity: 0.95; }
             realtimePollTimer = setInterval(tryMatch, 1200);
         }
 
-        function enterRoom(supabase, roomId, myKey, p1Key, p2Key) {
+        async function enterRoom(supabase, roomId, myKey, p1Key, p2Key) {
             // 이미 같은 방에 있으면 중복 진입 방지
             if (realtimeRoomId === roomId) {
                 console.log('이미 같은 방에 있습니다.');
@@ -409,6 +409,16 @@ a.btn-again:hover { opacity: 0.95; }
             if (!p1Key || !p2Key) {
                 console.error('상대방이 없습니다. Player1:', p1Key, 'Player2:', p2Key);
                 document.getElementById('realtimeStatus').textContent = '상대방을 찾는 중...';
+                document.getElementById('rtChoices').style.display = 'none';
+                return;
+            }
+            
+            // 실제 방 데이터를 다시 확인하여 상대방이 확실히 있는지 검증
+            const { data: roomData } = await supabase.from('rooms').select('player1_key, player2_key, status').eq('id', roomId).single();
+            if (!roomData || !roomData.player1_key || !roomData.player2_key) {
+                console.error('방 데이터에 상대방이 없습니다:', roomData);
+                document.getElementById('realtimeStatus').textContent = '상대방을 찾는 중...';
+                document.getElementById('rtChoices').style.display = 'none';
                 return;
             }
             
@@ -423,9 +433,10 @@ a.btn-again:hover { opacity: 0.95; }
             const amPlayer1 = p1Key === myKey;
             console.log('나는 Player', amPlayer1 ? '1' : '2');
             
+            // 상대방이 확실히 있을 때만 UI 표시
             document.getElementById('realtimeStatus').textContent = '✅ 상대를 찾았습니다!';
             document.getElementById('realtimeStatus').classList.add('found');
-            document.getElementById('rtChoices').style.display = 'flex';
+            // renderRoom에서 상태에 따라 표시/숨김 처리
 
             const rtMyScoreEl = document.getElementById('rtMyScore');
             const rtOppScoreEl = document.getElementById('rtOppScore');
@@ -438,6 +449,17 @@ a.btn-again:hover { opacity: 0.95; }
             const rtFinalDesc = document.getElementById('rtFinalDesc');
 
             function renderRoom(room) {
+                // 상대방이 없으면 게임 UI 숨김
+                if (!room || !room.player1_key || !room.player2_key) {
+                    console.log('상대방이 없어서 게임 UI 숨김:', room);
+                    rtChoices.style.display = 'none';
+                    rtWaiting.style.display = 'none';
+                    rtFinal.style.display = 'none';
+                    document.getElementById('realtimeStatus').textContent = '상대방을 찾는 중...';
+                    document.getElementById('realtimeStatus').classList.remove('found');
+                    return;
+                }
+                
                 const myScore = amPlayer1 ? room.p1_score : room.p2_score;
                 const oppScore = amPlayer1 ? room.p2_score : room.p1_score;
                 rtMyScoreEl.textContent = myScore;
@@ -445,6 +467,7 @@ a.btn-again:hover { opacity: 0.95; }
                 rtRoundInfo.textContent = '1판';
                 const myChoice = amPlayer1 ? room.p1_choice : room.p2_choice;
                 const oppChoice = amPlayer1 ? room.p2_choice : room.p1_choice;
+                
                 if (room.status === 'done') {
                     rtChoices.style.display = 'none';
                     rtWaiting.style.display = 'none';
@@ -464,6 +487,7 @@ a.btn-again:hover { opacity: 0.95; }
                     }
                     return;
                 }
+                
                 const bothChose = room.p1_choice && room.p2_choice;
                 if (bothChose) {
                     const res = computeResult(myChoice, oppChoice);
@@ -475,6 +499,7 @@ a.btn-again:hover { opacity: 0.95; }
                     rtChoices.style.display = 'none';
                     rtWaiting.style.display = 'block';
                 } else {
+                    // 상대방이 있을 때만 선택 버튼 표시
                     rtChoices.style.display = 'flex';
                     rtWaiting.style.display = 'none';
                     rtChoices.querySelectorAll('.rt-choice').forEach(btn => btn.disabled = !!myChoice);
@@ -482,7 +507,17 @@ a.btn-again:hover { opacity: 0.95; }
                 }
             }
 
-            supabase.from('rooms').select('*').eq('id', roomId).single().then(({ data }) => { if (data) renderRoom(data); });
+            // 방 데이터를 가져와서 초기 렌더링
+            supabase.from('rooms').select('*').eq('id', roomId).single().then(({ data }) => { 
+                if (data) {
+                    console.log('방 데이터 로드:', data);
+                    renderRoom(data);
+                } else {
+                    console.error('방 데이터를 찾을 수 없습니다:', roomId);
+                    document.getElementById('realtimeStatus').textContent = '상대방을 찾는 중...';
+                    document.getElementById('rtChoices').style.display = 'none';
+                }
+            });
 
             async function applyScoreIfBothChose(room) {
                 if (!room || room.status !== 'playing' || !room.p1_choice || !room.p2_choice || !amPlayer1) return;

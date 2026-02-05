@@ -230,27 +230,54 @@ a.btn-again:hover { opacity: 0.95; }
         let realtimePollTimer = null;
 
         async function leaveRealtime() {
+            console.log('매칭 종료 및 정리 시작...');
+            
+            // 타이머 정리
             if (realtimePollTimer) clearInterval(realtimePollTimer);
             realtimePollTimer = null;
-            realtimeUnsub.forEach(ch => { try { ch.unsubscribe(); } catch(e) {} });
+            
+            // 채널 구독 해제
+            realtimeUnsub.forEach(ch => { 
+                try { 
+                    ch.unsubscribe(); 
+                    console.log('채널 구독 해제 완료');
+                } catch(e) {
+                    console.error('채널 구독 해제 오류:', e);
+                } 
+            });
             realtimeUnsub.length = 0;
-            realtimeRoomId = null;
+            
+            // 매칭 큐에서 제거
             if (SUPABASE_URL && SUPABASE_ANON_KEY && SUPABASE_URL !== 'YOUR_SUPABASE_URL') {
-                const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-                const myKey = getMyKey();
-                const { data: q } = await supabase.from('matchmaking').select('player1_key, player2_key').eq('id', 1).single();
-                if (q && (q.player1_key === myKey || q.player2_key === myKey)) {
-                    const updates = {};
-                    if (q.player1_key === myKey) updates.player1_key = null;
-                    if (q.player2_key === myKey) updates.player2_key = null;
-                    updates.updated_at = new Date().toISOString();
-                    await supabase.from('matchmaking').update(updates).eq('id', 1);
+                try {
+                    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                    const myKey = getMyKey();
+                    const { data: q } = await supabase.from('matchmaking').select('player1_key, player2_key').eq('id', 1).single();
+                    if (q && (q.player1_key === myKey || q.player2_key === myKey)) {
+                        const updates = {};
+                        if (q.player1_key === myKey) updates.player1_key = null;
+                        if (q.player2_key === myKey) updates.player2_key = null;
+                        updates.updated_at = new Date().toISOString();
+                        await supabase.from('matchmaking').update(updates).eq('id', 1);
+                        console.log('매칭 큐에서 제거 완료');
+                    }
+                } catch (error) {
+                    console.error('매칭 큐 정리 오류:', error);
                 }
             }
+            
+            // 상태 초기화
+            realtimeRoomId = null;
             document.getElementById('realtimeStatus').textContent = '상대를 찾는 중...';
             document.getElementById('realtimeStatus').classList.remove('found');
             document.getElementById('rtChoices').style.display = 'none';
             document.getElementById('realtimeFinal').style.display = 'none';
+            document.getElementById('rtResultMsg').textContent = '';
+            document.getElementById('rtMyScore').textContent = '0';
+            document.getElementById('rtOppScore').textContent = '0';
+            document.getElementById('rtRoundInfo').textContent = '1판';
+            
+            console.log('매칭 종료 및 정리 완료');
         }
 
         async function startRealtime() {
@@ -265,18 +292,28 @@ a.btn-again:hover { opacity: 0.95; }
             document.getElementById('realtimeStatus').textContent = '상대를 찾는 중...';
             document.getElementById('realtimeStatus').style.color = '';
             
-            leaveRealtime();
+            // 기존 연결 정리
+            await leaveRealtime();
+            
+            // 잠시 대기 (정리 시간 확보)
+            await new Promise(resolve => setTimeout(resolve, 300));
+            
             const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
             const myKey = getMyKey();
+            console.log('내 키:', myKey);
             console.log('내 키:', myKey);
 
             let { data: queue } = await supabase.from('matchmaking').select('*').eq('id', 1).single();
             
-            // 기존 완료된 매칭 정리
-            if (queue && queue.player1_key && queue.player2_key) {
-                console.log('기존 완료된 매칭 정리 중...');
-                await supabase.from('matchmaking').update({ player1_key: null, player2_key: null, updated_at: new Date().toISOString() }).eq('id', 1);
-                queue = { ...queue, player1_key: null, player2_key: null };
+            // 기존 완료된 매칭 정리 (오래된 매칭도 정리)
+            if (queue) {
+                const queueAge = queue.updated_at ? (Date.now() - new Date(queue.updated_at).getTime()) : Infinity;
+                // 30초 이상 된 매칭은 자동 정리
+                if ((queue.player1_key && queue.player2_key) || queueAge > 30000) {
+                    console.log('기존 완료된/오래된 매칭 정리 중...', { queueAge });
+                    await supabase.from('matchmaking').update({ player1_key: null, player2_key: null, updated_at: new Date().toISOString() }).eq('id', 1);
+                    queue = { ...queue, player1_key: null, player2_key: null };
+                }
             }
             
             // 대기열에 추가
@@ -563,8 +600,14 @@ a.btn-again:hover { opacity: 0.95; }
             });
         }
 
-        document.getElementById('realtimeBtnAgain').addEventListener('click', function() {
-            leaveRealtime().then(function() { startRealtime(); });
+        document.getElementById('realtimeBtnAgain').addEventListener('click', async function() {
+            console.log('다시 하기 버튼 클릭');
+            await leaveRealtime();
+            // 잠시 대기 후 재시작 (상태 정리 시간 확보)
+            setTimeout(function() {
+                console.log('재매칭 시작...');
+                startRealtime();
+            }, 500);
         });
 
         // 페이지 로드 시 자동 시작

@@ -159,11 +159,102 @@ a.back:hover { color: var(--ink); }
   padding: 32px;
   border: 1px solid var(--border);
   margin-top: 24px;
+  position: relative;
+  overflow: hidden;
 }
 .final-panel.visible { display: block; }
-.final-panel h2 { margin: 0 0 16px; font-size: 1.5rem; }
+.final-panel h2 { margin: 0 0 16px; font-size: 1.4rem; }
 .final-panel.win h2 { color: #4ade80; }
 .final-panel.lose h2 { color: #f87171; }
+.final-copy {
+  font-size: 1rem;
+  color: var(--ink);
+  line-height: 1.6;
+  margin-bottom: 16px;
+}
+.final-copy .line { display: block; }
+.final-copy .emoji { margin-left: 6px; }
+
+.btn-main {
+  display: inline-block;
+  padding: 14px 28px;
+  border-radius: 12px;
+  background: linear-gradient(130deg, var(--brand-strong), var(--brand));
+  color: #fff;
+  text-decoration: none;
+  font-weight: 700;
+  margin-top: 16px;
+}
+.btn-main:hover { opacity: 0.95; }
+
+.confetti {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.confetti span {
+  position: absolute;
+  top: -10%;
+  width: 8px;
+  height: 14px;
+  border-radius: 4px;
+  opacity: 0.9;
+  animation: confetti-fall 2.8s linear infinite;
+}
+@keyframes confetti-fall {
+  0% { transform: translateY(-20px) rotate(0deg); }
+  100% { transform: translateY(520px) rotate(360deg); }
+}
+
+.swipe-card {
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 18px;
+  margin-top: 18px;
+}
+.swipe-title {
+  font-size: 1rem;
+  color: var(--muted);
+  margin-bottom: 12px;
+}
+.swipe-track {
+  position: relative;
+  height: 54px;
+  border-radius: 30px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+.swipe-text {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: 0.2px;
+}
+.swipe-handle {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: linear-gradient(130deg, #f59e0b, #f97316);
+  box-shadow: 0 10px 25px rgba(0,0,0,0.25);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 1.1rem;
+  user-select: none;
+  touch-action: none;
+}
 
 .realtime-status {
   font-size: 1.1rem;
@@ -235,13 +326,26 @@ a.btn-again:hover { opacity: 0.95; }
             <div id="rtWaiting" class="realtime-waiting" style="display: none;">상대 선택 대기 중...</div>
 
             <div id="realtimeFinal" class="final-panel" style="display: none;">
-                <h2 id="rtFinalTitle">-</h2>
-                <p id="rtFinalDesc">-</p>
-            </div>
-
-            <div style="margin-top: 24px;">
-                <a href="#" id="realtimeBtnAgain" class="btn-again">다시 하기</a>
-                <a href="index.html" class="btn-again" style="margin-left: 12px;">메인으로</a>
+                <div id="finalWin" style="display: none;">
+                    <div class="confetti" id="confettiLayer"></div>
+                    <h2>축하해요! 이제 에어팟 완전체는 당신의 것!</h2>
+                    <div class="swipe-card">
+                        <div class="swipe-title">아이폰 밀어서 전화받기처럼</div>
+                        <div class="swipe-track" id="swipeTrack">
+                            <div class="swipe-text">에어팟 수령</div>
+                            <div class="swipe-handle" id="swipeHandle">→</div>
+                        </div>
+                    </div>
+                </div>
+                <div id="finalLose" style="display: none;">
+                    <h2>패배</h2>
+                    <p class="final-copy">
+                        <span class="line">덕분에 상대방이 완전한 에어팟을 즐길 수 있어요<span class="emoji">🎧</span></span>
+                        <span class="line">아, 좋은 승부였다<span class="emoji">😇</span></span>
+                        <span class="line">😉 또 다른 행운이 올거예요 <span class="emoji">🍀</span></span>
+                    </p>
+                    <a href="index.html" class="btn-main">메인으로 돌아가기</a>
+                </div>
             </div>
         </div>
     </div>
@@ -697,8 +801,62 @@ a.btn-again:hover { opacity: 0.95; }
             const rtChoices = document.getElementById('rtChoices');
             const rtWaiting = document.getElementById('rtWaiting');
             const rtFinal = document.getElementById('realtimeFinal');
-            const rtFinalTitle = document.getElementById('rtFinalTitle');
-            const rtFinalDesc = document.getElementById('rtFinalDesc');
+            const finalWin = document.getElementById('finalWin');
+            const finalLose = document.getElementById('finalLose');
+            const confettiLayer = document.getElementById('confettiLayer');
+            const swipeTrack = document.getElementById('swipeTrack');
+            const swipeHandle = document.getElementById('swipeHandle');
+
+            function buildConfetti() {
+                if (!confettiLayer || confettiLayer.children.length) return;
+                const colors = ['#f87171', '#fbbf24', '#34d399', '#60a5fa', '#a78bfa', '#f472b6'];
+                for (let i = 0; i < 18; i++) {
+                    const piece = document.createElement('span');
+                    piece.style.left = Math.random() * 100 + '%';
+                    piece.style.animationDelay = (Math.random() * 2) + 's';
+                    piece.style.background = colors[i % colors.length];
+                    confettiLayer.appendChild(piece);
+                }
+            }
+
+            function setupSwipe() {
+                if (!swipeTrack || !swipeHandle || swipeHandle.dataset.bound === 'true') return;
+                swipeHandle.dataset.bound = 'true';
+                let dragging = false;
+                let startX = 0;
+                let startLeft = 0;
+                const maxLeft = () => swipeTrack.clientWidth - swipeHandle.clientWidth - 8;
+
+                const onDown = (e) => {
+                    dragging = true;
+                    startX = e.clientX;
+                    startLeft = parseFloat(getComputedStyle(swipeHandle).left) || 4;
+                    swipeHandle.setPointerCapture(e.pointerId);
+                };
+
+                const onMove = (e) => {
+                    if (!dragging) return;
+                    const dx = e.clientX - startX;
+                    let next = Math.min(Math.max(startLeft + dx, 4), maxLeft());
+                    swipeHandle.style.left = next + 'px';
+                };
+
+                const onUp = () => {
+                    if (!dragging) return;
+                    dragging = false;
+                    const progress = (parseFloat(getComputedStyle(swipeHandle).left) - 4) / maxLeft();
+                    if (progress > 0.6) {
+                        location.href = 'receipt.html';
+                        return;
+                    }
+                    swipeHandle.style.left = '4px';
+                };
+
+                swipeHandle.addEventListener('pointerdown', onDown);
+                swipeHandle.addEventListener('pointermove', onMove);
+                swipeHandle.addEventListener('pointerup', onUp);
+                swipeHandle.addEventListener('pointercancel', onUp);
+            }
 
             function resetChoicesUI() {
                 rtChoices.innerHTML = `
@@ -817,13 +975,15 @@ a.btn-again:hover { opacity: 0.95; }
                     rtWaiting.style.display = 'none';
                     rtFinal.style.display = 'block';
                     if (myScore > oppScore) {
-                        rtFinalTitle.textContent = '승리!';
-                        rtFinalDesc.textContent = '운명의 짝을 찾았습니다.';
                         rtFinal.className = 'final-panel visible win';
+                        finalWin.style.display = 'block';
+                        finalLose.style.display = 'none';
+                        buildConfetti();
+                        setupSwipe();
                     } else if (myScore < oppScore) {
-                        rtFinalTitle.textContent = '패배';
-                        rtFinalDesc.textContent = '다음 기회를 노려보세요.';
                         rtFinal.className = 'final-panel visible lose';
+                        finalWin.style.display = 'none';
+                        finalLose.style.display = 'block';
                     }
                     return;
                 }
@@ -1404,16 +1564,6 @@ a.btn-again:hover { opacity: 0.95; }
                 attachChoiceListeners();
             }, 100);
         }
-
-        document.getElementById('realtimeBtnAgain').addEventListener('click', async function() {
-            console.log('다시 하기 버튼 클릭');
-            await leaveRealtime();
-            // 잠시 대기 후 재시작 (상태 정리 시간 확보)
-            setTimeout(function() {
-                console.log('재매칭 시작...');
-                startRealtime();
-            }, 500);
-        });
 
         // 페이지 로드 시 자동 시작
         if (SUPABASE_URL && SUPABASE_ANON_KEY && SUPABASE_URL !== 'YOUR_SUPABASE_URL') {

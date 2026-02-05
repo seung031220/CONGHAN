@@ -476,6 +476,9 @@ a.btn-again:hover { opacity: 0.95; }
             console.log('나는 Player', amPlayer1 ? '1' : '2');
             
             // 아직 "상대를 찾는 중..." 상태 유지 (renderRoom에서 변경됨)
+            // 버튼 컨테이너 초기화
+            rtChoices.style.display = 'none';
+            rtChoices.style.visibility = 'hidden';
 
             const rtMyScoreEl = document.getElementById('rtMyScore');
             const rtOppScoreEl = document.getElementById('rtOppScore');
@@ -543,11 +546,28 @@ a.btn-again:hover { opacity: 0.95; }
                     rtWaiting.style.display = 'block';
                 } else {
                     // 상대방이 있을 때만 선택 버튼 표시
-                    console.log('게임 진행 중 - 버튼 표시', { myChoice, bothChose, status: room.status });
+                    console.log('게임 진행 중 - 버튼 표시', { 
+                        myChoice, 
+                        bothChose, 
+                        status: room.status,
+                        p1_choice: room.p1_choice,
+                        p2_choice: room.p2_choice,
+                        player1_key: room.player1_key,
+                        player2_key: room.player2_key
+                    });
+                    
+                    // 버튼 컨테이너 확실하게 표시
                     rtChoices.style.display = 'flex';
                     rtChoices.style.visibility = 'visible';
+                    rtChoices.style.opacity = '1';
                     rtWaiting.style.display = 'none';
                     rtFinal.style.display = 'none';
+                    
+                    console.log('버튼 컨테이너 표시 완료:', {
+                        display: rtChoices.style.display,
+                        visibility: rtChoices.style.visibility,
+                        computedDisplay: window.getComputedStyle(rtChoices).display
+                    });
                     
                     // 버튼 상태 업데이트 및 이벤트 리스너 확인
                     const buttons = rtChoices.querySelectorAll('.rt-choice');

@@ -578,7 +578,7 @@ a.btn-again:hover { opacity: 0.95; }
                     rtWaiting.style.display = 'block';
                 } else {
                     // 상대방이 있을 때만 선택 버튼 표시
-                    console.log('🎮 게임 진행 중 - 버튼 표시 시작', { 
+                    console.log(`🎮 ${amPlayer1 ? 'Player1' : 'Player2'} 게임 진행 중 - 버튼 표시 시작`, { 
                         myChoice, 
                         bothChose, 
                         status: room.status,
@@ -586,32 +586,47 @@ a.btn-again:hover { opacity: 0.95; }
                         p2_choice: room.p2_choice,
                         player1_key: room.player1_key,
                         player2_key: room.player2_key,
-                        amPlayer1: amPlayer1
+                        amPlayer1: amPlayer1,
+                        내키: myKey
                     });
                     
                     // 다른 UI 요소 숨기기
                     rtWaiting.style.display = 'none';
                     rtFinal.style.display = 'none';
                     
-                    // 버튼 컨테이너 강제로 표시 (여러 방법으로)
+                    // 버튼 컨테이너 강제로 표시 (Player2를 위해 더 확실하게)
+                    // 1. 기본 스타일 설정
                     rtChoices.style.display = 'flex';
                     rtChoices.style.visibility = 'visible';
                     rtChoices.style.opacity = '1';
                     rtChoices.style.height = 'auto';
                     rtChoices.style.width = 'auto';
+                    rtChoices.style.position = 'relative';
+                    
+                    // 2. 속성 제거
                     rtChoices.removeAttribute('hidden');
                     rtChoices.classList.remove('hidden');
                     
-                    // 인라인 스타일로 강제 설정
-                    rtChoices.setAttribute('style', 'display: flex !important; visibility: visible !important; opacity: 1 !important;');
+                    // 3. 인라인 스타일로 강제 설정 (!important)
+                    rtChoices.setAttribute('style', 'display: flex !important; visibility: visible !important; opacity: 1 !important; height: auto !important; width: auto !important;');
                     
-                    console.log('✅ 버튼 컨테이너 표시 완료:', {
+                    // 4. DOM에 직접 접근하여 확인
+                    const rtChoicesElement = document.getElementById('rtChoices');
+                    if (rtChoicesElement) {
+                        rtChoicesElement.style.display = 'flex';
+                        rtChoicesElement.style.visibility = 'visible';
+                        rtChoicesElement.removeAttribute('hidden');
+                    }
+                    
+                    console.log(`✅ ${amPlayer1 ? 'Player1' : 'Player2'} 버튼 컨테이너 표시 완료:`, {
                         display: rtChoices.style.display,
                         visibility: rtChoices.style.visibility,
                         computedDisplay: window.getComputedStyle(rtChoices).display,
                         computedVisibility: window.getComputedStyle(rtChoices).visibility,
                         offsetHeight: rtChoices.offsetHeight,
-                        offsetWidth: rtChoices.offsetWidth
+                        offsetWidth: rtChoices.offsetWidth,
+                        clientHeight: rtChoices.clientHeight,
+                        scrollHeight: rtChoices.scrollHeight
                     });
                     
                     // 버튼 상태 업데이트 및 이벤트 리스너 확인
@@ -648,24 +663,53 @@ a.btn-again:hover { opacity: 0.95; }
                     
                     if (!myChoice) {
                         rtResultMsg.textContent = '';
-                        // 이벤트 리스너 연결 (즉시)
-                        console.log('🔗 이벤트 리스너 연결 시도...');
+                        
+                        // Player2를 위해 즉시 이벤트 리스너 연결
+                        console.log(`🔗 ${amPlayer1 ? 'Player1' : 'Player2'} 이벤트 리스너 연결 시도...`);
                         attachChoiceListeners();
                         
-                        // 추가 확인 (0.5초 후)
+                        // Player2를 위해 추가 확인 (여러 번)
                         setTimeout(() => {
                             const checkButtons = rtChoices.querySelectorAll('.rt-choice');
-                            console.log('🔍 이벤트 리스너 확인:', {
+                            const computedStyle = window.getComputedStyle(rtChoices);
+                            console.log(`🔍 ${amPlayer1 ? 'Player1' : 'Player2'} 이벤트 리스너 확인 (1차):`, {
                                 버튼개수: checkButtons.length,
                                 표시상태: rtChoices.style.display,
-                                계산된표시: window.getComputedStyle(rtChoices).display
+                                계산된표시: computedStyle.display,
+                                계산된가시성: computedStyle.visibility,
+                                높이: rtChoices.offsetHeight
                             });
-                            if (rtChoices.style.display !== 'flex' && window.getComputedStyle(rtChoices).display !== 'flex') {
-                                console.warn('⚠️ 버튼이 여전히 숨겨져 있음, 강제 표시');
+                            
+                            // Player2의 경우 더 적극적으로 처리
+                            if (!amPlayer1 && (rtChoices.style.display !== 'flex' || computedStyle.display !== 'flex' || rtChoices.offsetHeight === 0)) {
+                                console.warn(`⚠️ Player2 버튼이 여전히 숨겨져 있음, 강제 표시 시도`);
                                 rtChoices.style.display = 'flex';
-                                rtChoices.setAttribute('style', 'display: flex !important;');
+                                rtChoices.style.visibility = 'visible';
+                                rtChoices.setAttribute('style', 'display: flex !important; visibility: visible !important; opacity: 1 !important;');
+                                attachChoiceListeners();
                             }
-                        }, 500);
+                        }, 300);
+                        
+                        // Player2를 위해 2차 확인
+                        setTimeout(() => {
+                            if (!amPlayer1) {
+                                const checkButtons2 = rtChoices.querySelectorAll('.rt-choice');
+                                const computedStyle2 = window.getComputedStyle(rtChoices);
+                                console.log(`🔍 Player2 이벤트 리스너 확인 (2차):`, {
+                                    버튼개수: checkButtons2.length,
+                                    표시상태: rtChoices.style.display,
+                                    계산된표시: computedStyle2.display,
+                                    높이: rtChoices.offsetHeight
+                                });
+                                
+                                if (checkButtons2.length > 0 && rtChoices.offsetHeight === 0) {
+                                    console.warn('⚠️ Player2 버튼이 있지만 높이가 0, 강제 표시');
+                                    rtChoices.style.display = 'flex';
+                                    rtChoices.setAttribute('style', 'display: flex !important;');
+                                    attachChoiceListeners();
+                                }
+                            }
+                        }, 800);
                     }
                 }
             }

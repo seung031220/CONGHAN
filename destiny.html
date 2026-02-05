@@ -253,6 +253,7 @@ a.btn-again:hover { opacity: 0.95; }
         let realtimeUnsub = [];
         let realtimePollTimer = null;
         let realtimeHeartbeatTimer = null;
+        let realtimeRenderRetryTimer = null;
 
         async function leaveRealtime() {
             console.log('매칭 종료 및 정리 시작...');
@@ -262,6 +263,8 @@ a.btn-again:hover { opacity: 0.95; }
             realtimePollTimer = null;
             if (realtimeHeartbeatTimer) clearInterval(realtimeHeartbeatTimer);
             realtimeHeartbeatTimer = null;
+            if (realtimeRenderRetryTimer) clearInterval(realtimeRenderRetryTimer);
+            realtimeRenderRetryTimer = null;
             
             // 채널 구독 해제
             realtimeUnsub.forEach(ch => { 
@@ -658,6 +661,8 @@ a.btn-again:hover { opacity: 0.95; }
             realtimePollTimer = null;
             if (realtimeHeartbeatTimer) clearInterval(realtimeHeartbeatTimer);
             realtimeHeartbeatTimer = null;
+            if (realtimeRenderRetryTimer) clearInterval(realtimeRenderRetryTimer);
+            realtimeRenderRetryTimer = null;
             realtimeUnsub.forEach(ch => { try { ch.unsubscribe(); } catch(e) {} });
             realtimeUnsub.length = 0;
             realtimeRoomId = roomId;
@@ -1149,6 +1154,30 @@ a.btn-again:hover { opacity: 0.95; }
                             }
                         }, 1000);
                     }
+
+                    // 실시간 이벤트를 놓쳐도 UI가 보이도록 방 상태 재확인 (최대 8초)
+                    if (realtimeRenderRetryTimer) clearInterval(realtimeRenderRetryTimer);
+                    const retryStart = Date.now();
+                    realtimeRenderRetryTimer = setInterval(async () => {
+                        if (realtimeRoomId !== roomId) {
+                            clearInterval(realtimeRenderRetryTimer);
+                            realtimeRenderRetryTimer = null;
+                            return;
+                        }
+                        if (Date.now() - retryStart > 8000) {
+                            clearInterval(realtimeRenderRetryTimer);
+                            realtimeRenderRetryTimer = null;
+                            return;
+                        }
+                        const { data: latestRoom } = await supabase.from('rooms').select('*').eq('id', roomId).single();
+                        if (latestRoom) {
+                            renderRoom(latestRoom);
+                            if (window.getComputedStyle(rtChoices).display === 'flex' && rtChoices.offsetHeight > 0) {
+                                clearInterval(realtimeRenderRetryTimer);
+                                realtimeRenderRetryTimer = null;
+                            }
+                        }
+                    }, 500);
                 } else {
                     console.error(`❌ ${amPlayer1 ? 'Player1' : 'Player2'} 방 데이터를 찾을 수 없습니다:`, roomId);
                     document.getElementById('realtimeStatus').textContent = '상대방을 찾는 중...';

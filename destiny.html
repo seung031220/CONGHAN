@@ -119,6 +119,24 @@ a.back:hover { color: var(--ink); }
   pointer-events: auto;
 }
 
+/* Player2 버튼 강제 표시를 위한 CSS */
+#rtChoices.player2-active {
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  height: auto !important;
+  width: auto !important;
+  position: relative !important;
+}
+
+#rtChoices.player2-active .rt-choice {
+  display: inline-block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  cursor: pointer !important;
+}
+
 .round-info { font-size: 1rem; color: var(--muted); margin-bottom: 16px; }
 .result-msg { font-size: 1.25rem; font-weight: 700; margin: 16px 0; min-height: 28px; }
 
@@ -517,6 +535,13 @@ a.btn-again:hover { opacity: 0.95; }
             
             // 초기 상태 설정
             console.log(`방 입장 초기화 - ${amPlayer1 ? 'Player1' : 'Player2'} 버튼 숨김`);
+            
+            // Player2의 경우 player2-active 클래스 추가 (초기부터)
+            if (!amPlayer1) {
+                rtChoices.classList.add('player2-active');
+                console.log('✅ Player2 player2-active 클래스 추가');
+            }
+            
             rtChoices.style.display = 'none';
             rtChoices.style.visibility = 'hidden';
             rtWaiting.style.display = 'none';
@@ -527,13 +552,36 @@ a.btn-again:hover { opacity: 0.95; }
                 console.log(`🔧 ${amPlayer1 ? 'Player1' : 'Player2'} 버튼 강제 표시 함수 실행`);
                 const choicesEl = document.getElementById('rtChoices');
                 if (choicesEl) {
+                    // Player2 전용 클래스 추가
+                    if (!amPlayer1) {
+                        choicesEl.classList.add('player2-active');
+                    }
+                    
                     choicesEl.style.display = 'flex';
                     choicesEl.style.visibility = 'visible';
                     choicesEl.style.opacity = '1';
+                    choicesEl.style.height = 'auto';
+                    choicesEl.style.width = 'auto';
                     choicesEl.removeAttribute('hidden');
                     choicesEl.classList.remove('hidden');
-                    choicesEl.setAttribute('style', 'display: flex !important; visibility: visible !important; opacity: 1 !important;');
-                    console.log(`✅ ${amPlayer1 ? 'Player1' : 'Player2'} 버튼 강제 표시 완료`);
+                    choicesEl.setAttribute('style', 'display: flex !important; visibility: visible !important; opacity: 1 !important; height: auto !important; width: auto !important; position: relative !important;');
+                    
+                    // 각 버튼도 강제 표시
+                    const buttons = choicesEl.querySelectorAll('.rt-choice');
+                    buttons.forEach(btn => {
+                        btn.style.display = 'inline-block';
+                        btn.style.visibility = 'visible';
+                        btn.style.opacity = '1';
+                        btn.style.pointerEvents = 'auto';
+                        btn.style.cursor = 'pointer';
+                        btn.removeAttribute('hidden');
+                    });
+                    
+                    console.log(`✅ ${amPlayer1 ? 'Player1' : 'Player2'} 버튼 강제 표시 완료`, {
+                        클래스: choicesEl.className,
+                        버튼개수: buttons.length,
+                        높이: choicesEl.offsetHeight
+                    });
                 }
             }
 
@@ -542,6 +590,7 @@ a.btn-again:hover { opacity: 0.95; }
                 if (!room || !room.player1_key || !room.player2_key) {
                     console.log('상대방이 없어서 게임 UI 숨김:', room);
                     rtChoices.style.display = 'none';
+                    rtChoices.classList.remove('player2-active');
                     rtWaiting.style.display = 'none';
                     rtFinal.style.display = 'none';
                     document.getElementById('realtimeStatus').textContent = '상대방을 찾는 중...';
@@ -552,6 +601,12 @@ a.btn-again:hover { opacity: 0.95; }
                 // 상대방이 있으면 매칭 완료 메시지 표시
                 document.getElementById('realtimeStatus').textContent = '✅ 상대를 찾았습니다!';
                 document.getElementById('realtimeStatus').classList.add('found');
+                
+                // Player2를 위해 즉시 버튼 표시 (가장 먼저 실행)
+                if (!amPlayer1) {
+                    console.log('🚀 Player2 renderRoom 시작 - 즉시 버튼 표시');
+                    forceShowButtons();
+                }
                 
                 const myScore = amPlayer1 ? room.p1_score : room.p2_score;
                 const oppScore = amPlayer1 ? room.p2_score : room.p1_score;
@@ -609,9 +664,10 @@ a.btn-again:hover { opacity: 0.95; }
                     rtWaiting.style.display = 'none';
                     rtFinal.style.display = 'none';
                     
-                    // 버튼 컨테이너 강제로 표시 (Player2를 위해 더 확실하게)
-                    // Player2를 위해 forceShowButtons 함수 호출
+                    // Player2를 위해 무조건 버튼 표시 (가장 먼저)
                     if (!amPlayer1) {
+                        console.log('🚀 Player2 버튼 강제 표시 (게임 진행 중)');
+                        rtChoices.classList.add('player2-active');
                         forceShowButtons();
                     }
                     
@@ -628,7 +684,7 @@ a.btn-again:hover { opacity: 0.95; }
                     rtChoices.classList.remove('hidden');
                     
                     // 3. 인라인 스타일로 강제 설정 (!important)
-                    rtChoices.setAttribute('style', 'display: flex !important; visibility: visible !important; opacity: 1 !important; height: auto !important; width: auto !important;');
+                    rtChoices.setAttribute('style', 'display: flex !important; visibility: visible !important; opacity: 1 !important; height: auto !important; width: auto !important; position: relative !important;');
                     
                     // 4. DOM에 직접 접근하여 확인
                     const rtChoicesElement = document.getElementById('rtChoices');
@@ -636,11 +692,25 @@ a.btn-again:hover { opacity: 0.95; }
                         rtChoicesElement.style.display = 'flex';
                         rtChoicesElement.style.visibility = 'visible';
                         rtChoicesElement.removeAttribute('hidden');
+                        if (!amPlayer1) {
+                            rtChoicesElement.classList.add('player2-active');
+                        }
                     }
                     
-                    // Player2를 위해 한 번 더 강제 표시
+                    // Player2를 위해 여러 번 강제 표시
                     if (!amPlayer1) {
-                        setTimeout(() => forceShowButtons(), 50);
+                        setTimeout(() => {
+                            console.log('🚀 Player2 버튼 강제 표시 (50ms 후)');
+                            forceShowButtons();
+                        }, 50);
+                        setTimeout(() => {
+                            console.log('🚀 Player2 버튼 강제 표시 (150ms 후)');
+                            forceShowButtons();
+                        }, 150);
+                        setTimeout(() => {
+                            console.log('🚀 Player2 버튼 강제 표시 (300ms 후)');
+                            forceShowButtons();
+                        }, 300);
                     }
                     
                     console.log(`✅ ${amPlayer1 ? 'Player1' : 'Player2'} 버튼 컨테이너 표시 완료:`, {
@@ -749,11 +819,51 @@ a.btn-again:hover { opacity: 0.95; }
             // Player2를 위해 즉시 버튼 표시 시도 (데이터 로드 전)
             if (!amPlayer1) {
                 console.log('🚀 Player2 즉시 버튼 표시 시도');
+                
+                // Player2 클래스 추가
+                const choicesEl = document.getElementById('rtChoices');
+                if (choicesEl) {
+                    choicesEl.classList.add('player2-active');
+                }
+                
                 setTimeout(() => {
                     forceShowButtons();
                 }, 100);
                 
-                // Player2를 위한 지속적인 버튼 확인 폴링 (매 500ms마다)
+                // MutationObserver로 버튼이 숨겨지면 즉시 다시 표시
+                if (choicesEl) {
+                    const observer = new MutationObserver((mutations) => {
+                        mutations.forEach((mutation) => {
+                            if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
+                                const target = mutation.target;
+                                const computedStyle = window.getComputedStyle(target);
+                                if (target.id === 'rtChoices' && computedStyle.display === 'none') {
+                                    console.warn('⚠️ Player2 MutationObserver: 버튼이 숨겨짐 감지, 즉시 표시');
+                                    forceShowButtons();
+                                }
+                            }
+                            if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+                                const target = mutation.target;
+                                if (target.id === 'rtChoices' && !target.classList.contains('player2-active')) {
+                                    console.warn('⚠️ Player2 MutationObserver: player2-active 클래스 제거 감지, 다시 추가');
+                                    target.classList.add('player2-active');
+                                    forceShowButtons();
+                                }
+                            }
+                        });
+                    });
+                    
+                    observer.observe(choicesEl, {
+                        attributes: true,
+                        attributeFilter: ['style', 'class'],
+                        childList: false,
+                        subtree: false
+                    });
+                    
+                    console.log('✅ Player2 MutationObserver 시작');
+                }
+                
+                // Player2를 위한 지속적인 버튼 확인 폴링 (매 300ms마다 - 더 자주 확인)
                 const player2ButtonPoll = setInterval(() => {
                     const choicesEl = document.getElementById('rtChoices');
                     if (!choicesEl) {
@@ -767,8 +877,15 @@ a.btn-again:hover { opacity: 0.95; }
                     
                     if (buttons.length > 0 && !isVisible) {
                         console.warn('⚠️ Player2 폴링: 버튼이 숨겨져 있음, 강제 표시');
+                        choicesEl.classList.add('player2-active');
                         forceShowButtons();
                         attachChoiceListeners();
+                    }
+                    
+                    // player2-active 클래스가 없으면 추가
+                    if (!choicesEl.classList.contains('player2-active')) {
+                        choicesEl.classList.add('player2-active');
+                        forceShowButtons();
                     }
                     
                     // 게임이 끝났거나 방을 나갔으면 폴링 중지
@@ -776,13 +893,13 @@ a.btn-again:hover { opacity: 0.95; }
                         console.log('🛑 Player2 폴링 중지 (방 변경)');
                         clearInterval(player2ButtonPoll);
                     }
-                }, 500);
+                }, 300);
                 
-                // 10초 후 폴링 중지 (너무 오래 실행되지 않도록)
+                // 15초 후 폴링 중지 (더 오래 실행)
                 setTimeout(() => {
                     clearInterval(player2ButtonPoll);
                     console.log('🛑 Player2 폴링 중지 (타임아웃)');
-                }, 10000);
+                }, 15000);
             }
             
             // 방 데이터를 가져와서 초기 렌더링 (Player1과 Player2 모두 동일하게 처리)

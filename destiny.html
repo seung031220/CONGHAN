@@ -271,11 +271,28 @@ a.btn-again:hover { opacity: 0.95; }
             });
             realtimeUnsub.length = 0;
             
-            // 매칭 큐에서 제거
+            // 매칭 큐에서 제거 + 내 진행 중 방 정리
             if (SUPABASE_URL && SUPABASE_ANON_KEY && SUPABASE_URL !== 'YOUR_SUPABASE_URL') {
                 try {
                     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
                     const myKey = getMyKey();
+
+                    // 내가 속한 진행 중 방은 종료 처리 (다음 매칭 방해 방지)
+                    try {
+                        await supabase
+                            .from('rooms')
+                            .update({
+                                status: 'done',
+                                p1_choice: null,
+                                p2_choice: null
+                            })
+                            .or(`player1_key.eq.${myKey},player2_key.eq.${myKey}`)
+                            .eq('status', 'playing');
+                        console.log('진행 중 방 종료 처리 완료');
+                    } catch (roomCleanupError) {
+                        console.error('진행 중 방 정리 오류:', roomCleanupError);
+                    }
+
                     const { data: q } = await supabase.from('matchmaking').select('player1_key, player2_key').eq('id', 1).single();
                     if (q && (q.player1_key === myKey || q.player2_key === myKey)) {
                         const updates = {};

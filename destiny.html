@@ -90,11 +90,9 @@ a.back:hover { color: var(--ink); }
   font-size: 1.5rem;
   font-weight: 800;
 }
-.score-board #myNameDisplay,
-.score-board #oppNameDisplay { font-size: 1.05rem; font-weight: 700; }
-.score-board .score-num { font-size: 2.4rem; font-weight: 900; }
-.score-board .my-score .score-num { color: #60a5fa; }
-.score-board .opp-score .score-num { color: #f87171; }
+.score-board span { font-size: 2.4rem; font-weight: 900; }
+.score-board .my-score span { color: #60a5fa; }
+.score-board .opp-score span { color: #f87171; }
 
 .choices { display: flex; justify-content: center; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }
 .choice-btn {
@@ -302,6 +300,153 @@ a.back:hover { color: var(--ink); }
   100% { box-shadow: 0 0 0 rgba(248,113,113,0.2); }
 }
 
+/* 캡슐 컨셉 안내 문구 */
+.game-guide {
+  margin: 12px auto 14px;
+  max-width: 520px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--ink);
+  line-height: 1.55;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+.game-guide .hint {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+/* 캡슐 UI */
+.capsule-area {
+  display: none;
+  justify-content: center;
+  gap: 14px;
+  margin: 14px 0 18px;
+  flex-wrap: wrap;
+}
+.capsule-card {
+  width: 210px;
+  padding: 14px 14px 16px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.06);
+}
+.capsule-title {
+  font-size: 0.95rem;
+  font-weight: 900;
+  color: var(--ink);
+  margin-bottom: 10px;
+}
+.capsule {
+  width: 100%;
+  height: 74px;
+  border-radius: 999px;
+  position: relative;
+  overflow: hidden;
+  border: 2px solid rgba(255,255,255,0.12);
+  background: rgba(0,0,0,0.16);
+  box-shadow: 0 18px 40px rgba(0,0,0,0.25);
+}
+.capsule .half {
+  position: absolute;
+  top: 0;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(140deg, rgba(255,255,255,0.16), rgba(255,255,255,0.08));
+  border: 1px solid rgba(255,255,255,0.12);
+  backdrop-filter: blur(6px);
+}
+.capsule .half.left { left: 0; border-right: none; }
+.capsule .half.right { right: 0; border-left: none; }
+.capsule .content {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.2rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+}
+.capsule.sealed .content { filter: blur(0.2px); }
+.capsule.open .half.left { transform: translateX(-58%); }
+.capsule.open .half.right { transform: translateX(58%); }
+.capsule .half { transition: transform 420ms cubic-bezier(.2,.8,.2,1); }
+.capsule.reveal .half.left,
+.capsule.reveal .half.right { transition: transform 520ms cubic-bezier(.12,.95,.2,1); }
+
+@keyframes capsule-pop {
+  0% { transform: translateY(0) scale(1); }
+  35% { transform: translateY(-6px) scale(1.02); }
+  100% { transform: translateY(0) scale(1); }
+}
+.capsule.pop { animation: capsule-pop 520ms ease; }
+
+/* 상대 기다림 팝업 */
+.waiting-popup {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(6px);
+  z-index: 40;
+}
+.waiting-popup.hidden { display: none; }
+.waiting-card {
+  width: min(420px, calc(100vw - 32px));
+  padding: 18px 18px 16px;
+  border-radius: 22px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.10);
+  box-shadow: var(--shadow);
+  text-align: center;
+}
+.waiting-title {
+  font-size: 1.2rem;
+  font-weight: 900;
+  margin: 0 0 8px;
+}
+.waiting-sub {
+  margin: 0;
+  color: var(--muted);
+  font-weight: 700;
+  line-height: 1.5;
+  font-size: 0.95rem;
+}
+.waiting-timer {
+  margin-top: 12px;
+  font-weight: 900;
+  color: #fbbf24;
+}
+.waiting-timer span {
+  font-size: 2.2rem;
+  display: inline-block;
+  min-width: 2ch;
+}
+
+/* 미선택자: 초대형 카운트다운 오버레이 */
+.countdown-overlay {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(0,0,0,0.25);
+  z-index: 35;
+  transition: background 200ms ease;
+  pointer-events: none;
+}
+.countdown-overlay.hidden { display: none; }
+.count-num {
+  font-size: min(32vw, 220px);
+  font-weight: 900;
+  color: #fff;
+  text-shadow: 0 18px 50px rgba(0,0,0,0.55);
+  line-height: 1;
+}
+
 a.btn-again {
   display: inline-block;
   padding: 14px 28px;
@@ -331,8 +476,32 @@ a.btn-again:hover { opacity: 0.95; }
             <div id="realtimeStatus" class="realtime-status">상대를 찾는 중...</div>
             
             <div class="score-board">
-                <div class="my-score"><span id="myNameDisplay">나</span>: <span id="rtMyScore" class="score-num">0</span></div>
-                <div class="opp-score"><span id="oppNameDisplay">상대</span>: <span id="rtOppScore" class="score-num">0</span></div>
+                <div class="my-score">나: <span id="rtMyScore">0</span></div>
+                <div class="opp-score">상대: <span id="rtOppScore">0</span></div>
+            </div>
+
+            <div class="game-guide">
+                <span class="hint">캡슐에 담을 패를 선택하세요.</span>
+                상대는 캡슐을 열기 전에 자신의 패를 선택합니다.
+            </div>
+
+            <div class="capsule-area" id="capsuleArea">
+                <div class="capsule-card">
+                    <div class="capsule-title">내 캡슐</div>
+                    <div class="capsule sealed" id="myCapsule" aria-label="내 캡슐">
+                        <div class="half left"></div>
+                        <div class="half right"></div>
+                        <div class="content" id="myCapsuleContent">❓</div>
+                    </div>
+                </div>
+                <div class="capsule-card">
+                    <div class="capsule-title">상대 캡슐</div>
+                    <div class="capsule sealed" id="oppCapsule" aria-label="상대 캡슐">
+                        <div class="half left"></div>
+                        <div class="half right"></div>
+                        <div class="content" id="oppCapsuleContent">❓</div>
+                    </div>
+                </div>
             </div>
 
             <div id="rtChoices" class="choices" style="display: none;">
@@ -375,62 +544,38 @@ a.btn-again:hover { opacity: 0.95; }
         </div>
     </div>
 
+    <div id="waitingPopup" class="waiting-popup hidden" role="dialog" aria-modal="true" aria-label="대기 팝업">
+        <div class="waiting-card">
+            <div class="waiting-title">상대의 패를 기다리고 있습니다</div>
+            <p class="waiting-sub">상대는 캡슐을 열기 전에 자신의 패를 선택합니다.</p>
+            <div class="waiting-timer"><span id="waitingTimer">7</span>초</div>
+        </div>
+    </div>
+
+    <div id="countdownOverlay" class="countdown-overlay hidden" aria-hidden="true">
+        <div class="count-num" id="countdownNum">7</div>
+    </div>
+
     <script>
         // Supabase 설정
         const SUPABASE_URL = 'https://crptwupxsctalwlltruh.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_T8l7VJH5FmJqrYwohTzzGw_k8gep3T0';
 
         const CHOICES = ['가위', '바위', '보'];
+        const CHOICE_EMOJI = { '가위': '✌️', '바위': '✊', '보': '🖐️', 'timeout': '⏳' };
 
-        const ADJECTIVES = [
-            '날아가는', '재빠른', '용감한', '영리한', '발빠른', '느긋한', '쿨한', '달콤한', '날쎈', '유쾌한',
-            '든든한', '상냥한', '충실한', '빛나는', '재치있는', '씩씩한', '당당한', '열정적인', '차가운', '따뜻한',
-            '신비로운', '명랑한', '조용한', '활발한', '지혜로운', '날렵한', '귀여운', '멋진', '달리는', '헤엄치는'
-        ];
-        const ANIMALS = [
-            { name: '호랑이', emoji: '🐯' }, { name: '거북이', emoji: '🐢' }, { name: '사자', emoji: '🦁' },
-            { name: '여우', emoji: '🦊' }, { name: '토끼', emoji: '🐰' }, { name: '코알라', emoji: '🐨' },
-            { name: '펭귄', emoji: '🐧' }, { name: '판다', emoji: '🐼' }, { name: '독수리', emoji: '🦅' },
-            { name: '오리', emoji: '🦆' }, { name: '곰', emoji: '🐻' }, { name: '고양이', emoji: '🐱' },
-            { name: '강아지', emoji: '🐶' }, { name: '나비', emoji: '🦋' }, { name: '원숭이', emoji: '🐵' },
-            { name: '늑대', emoji: '🐺' }, { name: '코끼리', emoji: '🐘' }, { name: '기린', emoji: '🦒' },
-            { name: '사슴', emoji: '🦌' }, { name: '올빼미', emoji: '🦉' }, { name: '돌고래', emoji: '🐬' },
-            { name: '하마', emoji: '🦛' }, { name: '얼룩말', emoji: '🦓' }
-        ];
-        function getRandomCode() {
-            const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-            let code = '';
-            for (let i = 0; i < 4; i++) code += chars[Math.floor(Math.random() * chars.length)];
-            return code;
+        function encodeChoice(choice, ts) {
+            const t = typeof ts === 'number' ? ts : Date.now();
+            return String(choice) + '@' + String(t);
         }
-        function pickRandomName() {
-            const adj = ADJECTIVES[Math.floor(Math.random() * ADJECTIVES.length)];
-            const animal = ANIMALS[Math.floor(Math.random() * ANIMALS.length)];
-            const code = getRandomCode();
-            return { label: adj + ' ' + animal.name, emoji: animal.emoji, code: code };
+        function decodeChoice(value) {
+            if (!value) return { choice: null, ts: null, raw: null };
+            const raw = String(value);
+            const parts = raw.split('@');
+            const choice = parts[0] || null;
+            const ts = parts.length > 1 ? Number(parts[1]) : null;
+            return { choice: choice, ts: Number.isFinite(ts) ? ts : null, raw: raw };
         }
-        let myDisplayLabel = '나';
-        let oppDisplayLabel = '상대';
-
-        (function initPlayerNames() {
-            try {
-                const raw = sessionStorage.getItem('matchPending');
-                if (raw) {
-                    const data = JSON.parse(raw);
-                    const myNickname = data.myNickname || '나';
-                    const myEmoji = data.myEmoji || '🎧';
-                    const myCode = data.myCode || getRandomCode();
-                    myDisplayLabel = myEmoji + ' ' + myNickname + ' #' + myCode;
-                    const opp = pickRandomName();
-                    oppDisplayLabel = opp.emoji + ' ' + opp.label + ' #' + opp.code;
-                }
-                document.getElementById('myNameDisplay').textContent = myDisplayLabel;
-                document.getElementById('oppNameDisplay').textContent = oppDisplayLabel;
-            } catch (e) {
-                document.getElementById('myNameDisplay').textContent = '나';
-                document.getElementById('oppNameDisplay').textContent = '상대';
-            }
-        })();
 
         function getMyKey() {
             // 탭(세션)별로 고유 키를 사용해 동일 브라우저 다중 탭 충돌 방지
@@ -443,8 +588,13 @@ a.btn-again:hover { opacity: 0.95; }
         }
 
         function computeResult(my, opp) {
-            if (my === opp) return 'draw';
-            if ((my === '가위' && opp === '보') || (my === '바위' && opp === '가위') || (my === '보' && opp === '바위')) return 'win';
+            const m = decodeChoice(my).choice || my;
+            const o = decodeChoice(opp).choice || opp;
+            if (m === o) return 'draw';
+            if (m === 'timeout' && o === 'timeout') return 'draw';
+            if (m === 'timeout') return 'lose';
+            if (o === 'timeout') return 'win';
+            if ((m === '가위' && o === '보') || (m === '바위' && o === '가위') || (m === '보' && o === '바위')) return 'win';
             return 'lose';
         }
 
@@ -522,6 +672,11 @@ a.btn-again:hover { opacity: 0.95; }
             document.getElementById('rtResultMsg').textContent = '';
             document.getElementById('rtMyScore').textContent = '0';
             document.getElementById('rtOppScore').textContent = '0';
+            // 캡슐/카운트다운 UI 정리
+            const waitingPopup = document.getElementById('waitingPopup');
+            if (waitingPopup) waitingPopup.classList.add('hidden');
+            const countdownOverlay = document.getElementById('countdownOverlay');
+            if (countdownOverlay) countdownOverlay.classList.add('hidden');
             const roundEl = document.getElementById('rtRoundInfo');
             if (roundEl) roundEl.textContent = '';
             foundToastShown = false;
@@ -888,6 +1043,23 @@ a.btn-again:hover { opacity: 0.95; }
             const rtChoices = document.getElementById('rtChoices');
             const rtWaiting = document.getElementById('rtWaiting');
             const rtFinal = document.getElementById('realtimeFinal');
+            const capsuleArea = document.getElementById('capsuleArea');
+            const myCapsule = document.getElementById('myCapsule');
+            const oppCapsule = document.getElementById('oppCapsule');
+            const myCapsuleContent = document.getElementById('myCapsuleContent');
+            const oppCapsuleContent = document.getElementById('oppCapsuleContent');
+            const waitingPopup = document.getElementById('waitingPopup');
+            const waitingTimer = document.getElementById('waitingTimer');
+            const countdownOverlay = document.getElementById('countdownOverlay');
+            const countdownNum = document.getElementById('countdownNum');
+
+            const COUNTDOWN_MS = 7000;
+            let countdownInterval = null;
+            let countdownStartTs = null;
+            let countdownDeadlineTs = null;
+            let countdownMissingField = null; // 'p1_choice' | 'p2_choice'
+            let timeoutSent = false;
+            let prevBothChose = false;
             let statusToast = document.getElementById('statusToast');
             if (!statusToast) {
                 statusToast = document.createElement('div');
@@ -978,6 +1150,105 @@ a.btn-again:hover { opacity: 0.95; }
                 rtChoices.style.width = 'auto';
                 rtChoices.style.position = 'relative';
             }
+
+            function setCapsuleState(target, isOpen, emoji) {
+                if (!target) return;
+                target.classList.remove('open', 'sealed', 'reveal', 'pop');
+                target.classList.add(isOpen ? 'open' : 'sealed');
+                const c = target === myCapsule ? myCapsuleContent : oppCapsuleContent;
+                if (c) c.textContent = emoji || '❓';
+            }
+
+            function popCapsule(target) {
+                if (!target) return;
+                target.classList.remove('pop');
+                void target.offsetWidth; // reflow
+                target.classList.add('pop');
+            }
+
+            function hideWaitingPopup() {
+                if (waitingPopup) waitingPopup.classList.add('hidden');
+            }
+            function showWaitingPopup(sec) {
+                if (!waitingPopup || !waitingTimer) return;
+                waitingTimer.textContent = String(sec);
+                waitingPopup.classList.remove('hidden');
+            }
+
+            function hideCountdownOverlay() {
+                if (countdownOverlay) countdownOverlay.classList.add('hidden');
+            }
+            function showCountdownOverlay(sec) {
+                if (!countdownOverlay || !countdownNum) return;
+                countdownNum.textContent = String(sec);
+                countdownOverlay.classList.remove('hidden');
+
+                // 4초부터 배경을 점점 빨갛게 (위기감)
+                if (sec <= 4) {
+                    const alpha = ((4 - sec + 1) / 4) * 0.70; // sec=4 -> 0.175, sec=1 -> 0.70
+                    countdownOverlay.style.background = `rgba(192, 57, 43, ${alpha})`;
+                } else {
+                    countdownOverlay.style.background = 'rgba(0,0,0,0.25)';
+                }
+            }
+
+            function stopCountdownUI() {
+                if (countdownInterval) clearInterval(countdownInterval);
+                countdownInterval = null;
+                countdownStartTs = null;
+                countdownDeadlineTs = null;
+                countdownMissingField = null;
+                timeoutSent = false;
+                hideWaitingPopup();
+                hideCountdownOverlay();
+            }
+
+            async function tryForceTimeoutChoice(roomId) {
+                if (timeoutSent || !countdownMissingField) return;
+                timeoutSent = true;
+                try {
+                    const patch = {};
+                    patch[countdownMissingField] = encodeChoice('timeout');
+                    const { error } = await supabase
+                        .from('rooms')
+                        .update(patch)
+                        .eq('id', roomId)
+                        .is(countdownMissingField, null);
+                    if (error) throw error;
+                    console.log('⏳ 시간 초과 처리 완료:', countdownMissingField);
+                } catch (e) {
+                    console.error('❌ 시간 초과 처리 실패:', e);
+                }
+            }
+
+            function ensureCountdownFrom(firstTs, missingField, iAmMissing, roomId) {
+                const startTs = firstTs || Date.now();
+                const deadlineTs = startTs + COUNTDOWN_MS;
+
+                if (countdownStartTs === startTs && countdownMissingField === missingField) return;
+
+                stopCountdownUI();
+                countdownStartTs = startTs;
+                countdownDeadlineTs = deadlineTs;
+                countdownMissingField = missingField;
+                timeoutSent = false;
+
+                const tick = async () => {
+                    const now = Date.now();
+                    const remainMs = countdownDeadlineTs - now;
+                    const sec = Math.max(0, Math.ceil(remainMs / 1000));
+
+                    if (iAmMissing) showCountdownOverlay(sec);
+                    else showWaitingPopup(sec);
+
+                    if (remainMs <= 0) {
+                        await tryForceTimeoutChoice(roomId);
+                    }
+                };
+
+                tick();
+                countdownInterval = setInterval(tick, 200);
+            }
             
             // 초기 상태 설정
             console.log(`방 입장 초기화 - ${amPlayer1 ? 'Player1' : 'Player2'} 버튼 숨김`);
@@ -1066,13 +1337,18 @@ a.btn-again:hover { opacity: 0.95; }
                 rtMyScoreEl.textContent = myScore;
                 rtOppScoreEl.textContent = oppScore;
                 if (rtRoundInfo) rtRoundInfo.textContent = '';
-                const myChoice = amPlayer1 ? room.p1_choice : room.p2_choice;
-                const oppChoice = amPlayer1 ? room.p2_choice : room.p1_choice;
+                const myChoiceRaw = amPlayer1 ? room.p1_choice : room.p2_choice;
+                const oppChoiceRaw = amPlayer1 ? room.p2_choice : room.p1_choice;
+                const myDec = decodeChoice(myChoiceRaw);
+                const oppDec = decodeChoice(oppChoiceRaw);
+                const myChoice = myDec.choice;
+                const oppChoice = oppDec.choice;
                 
                 if (room.status === 'done') {
                     rtChoices.style.display = 'none';
                     rtWaiting.style.display = 'none';
                     rtFinal.style.display = 'block';
+                    stopCountdownUI();
                     if (myScore > oppScore) {
                         rtFinal.className = 'final-panel visible win';
                         finalWin.style.display = 'block';
@@ -1087,14 +1363,36 @@ a.btn-again:hover { opacity: 0.95; }
                     return;
                 }
                 
-                const bothChose = room.p1_choice && room.p2_choice;
+                if (capsuleArea) capsuleArea.style.display = 'flex';
+
+                const bothChose = !!room.p1_choice && !!room.p2_choice;
                 if (bothChose) {
-                    const res = computeResult(myChoice, oppChoice);
+                    stopCountdownUI();
+
+                    const myEmoji = CHOICE_EMOJI[myChoice] || '❓';
+                    const oppEmoji = CHOICE_EMOJI[oppChoice] || '❓';
+                    setCapsuleState(myCapsule, true, myEmoji);
+                    setCapsuleState(oppCapsule, true, oppEmoji);
+                    if (!prevBothChose) {
+                        myCapsule.classList.add('reveal');
+                        oppCapsule.classList.add('reveal');
+                        popCapsule(myCapsule);
+                        popCapsule(oppCapsule);
+                        setTimeout(() => {
+                            myCapsule.classList.remove('reveal');
+                            oppCapsule.classList.remove('reveal');
+                        }, 650);
+                    }
+                    prevBothChose = true;
+
+                    const res = computeResult(myChoiceRaw, oppChoiceRaw);
                     let resText = '';
                     if (res === 'win') resText = '승리!';
                     else if (res === 'lose') resText = '패배';
                     else resText = '무승부';
-                    rtResultMsg.textContent = myDisplayLabel + ': ' + myChoice + ' vs ' + oppDisplayLabel + ': ' + oppChoice + ' → ' + resText;
+                    const myLabel = myChoice === 'timeout' ? '시간초과' : (myChoice || '—');
+                    const oppLabel = oppChoice === 'timeout' ? '시간초과' : (oppChoice || '—');
+                    rtResultMsg.textContent = '나: ' + myLabel + ' vs 상대: ' + oppLabel + ' → ' + resText;
 
                     if (res === 'draw') {
                         rtWaiting.style.display = 'none';
@@ -1113,10 +1411,29 @@ a.btn-again:hover { opacity: 0.95; }
                         rtWaiting.style.display = 'block';
                     }
                 } else {
+                    prevBothChose = false;
+
+                    // 캡슐: 봉인 상태에서는 패를 공개하지 않음(담김 여부만 표시)
+                    setCapsuleState(myCapsule, false, myChoice ? '💊' : '❓');
+                    setCapsuleState(oppCapsule, false, oppChoice ? '💊' : '❓');
+
+                    const myChosen = !!myChoiceRaw;
+                    const oppChosen = !!oppChoiceRaw;
+
+                    // 누군가 먼저 선택하면 7초 안에 상대도 선택해야 함
+                    if (myChosen !== oppChosen) {
+                        const first = myChosen ? myDec : oppDec;
+                        const firstTs = first && first.ts ? first.ts : Date.now();
+                        const missingField = room.p1_choice ? 'p2_choice' : 'p1_choice';
+                        ensureCountdownFrom(firstTs, missingField, !myChosen, roomId);
+                    } else {
+                        stopCountdownUI();
+                    }
+
                     // 내가 이미 선택했고 상대가 아직이면 긴박 대기 UI
                     if (myChoice && !oppChoice) {
                         rtChoices.style.display = 'none';
-                        rtWaiting.style.display = 'block';
+                        rtWaiting.style.display = 'none'; // 팝업으로 대기 표시
                         rtResultMsg.textContent = '';
                         return;
                     }
@@ -1613,6 +1930,7 @@ a.btn-again:hover { opacity: 0.95; }
 
                     const choice = btn.dataset.choice;
                     console.log('✅ 버튼 클릭! 선택:', choice, 'Player', amPlayer1 ? '1' : '2', 'Room:', roomId);
+                    const encodedChoice = encodeChoice(choice);
 
                     // 모든 버튼 즉시 비활성화 (중복 선택 방지)
                     rtChoices.querySelectorAll('.rt-choice').forEach(b => {
@@ -1625,14 +1943,19 @@ a.btn-again:hover { opacity: 0.95; }
 
                     try {
                         if (amPlayer1) {
-                            const { error } = await supabase.from('rooms').update({ p1_choice: choice }).eq('id', roomId);
+                            const { error } = await supabase.from('rooms').update({ p1_choice: encodedChoice }).eq('id', roomId);
                             if (error) throw error;
                             console.log('✅ Player1 선택 전송 완료:', choice);
                         } else {
-                            const { error } = await supabase.from('rooms').update({ p2_choice: choice }).eq('id', roomId);
+                            const { error } = await supabase.from('rooms').update({ p2_choice: encodedChoice }).eq('id', roomId);
                             if (error) throw error;
                             console.log('✅ Player2 선택 전송 완료:', choice);
                         }
+
+                        // 캡슐에 담는 느낌(봉인 + 팝)
+                        if (capsuleArea) capsuleArea.style.display = 'flex';
+                        setCapsuleState(myCapsule, false, '💊');
+                        popCapsule(myCapsule);
 
                         // 결과 확인 및 점수 업데이트
                         const { data: room, error: roomError } = await supabase.from('rooms').select('*').eq('id', roomId).single();

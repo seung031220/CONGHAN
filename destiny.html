@@ -234,10 +234,11 @@ a.btn-again:hover { opacity: 0.95; }
         const CHOICES = ['가위', '바위', '보'];
 
         function getMyKey() {
-            let k = localStorage.getItem('kong_key');
+            // 탭(세션)별로 고유 키를 사용해 동일 브라우저 다중 탭 충돌 방지
+            let k = sessionStorage.getItem('kong_key_session');
             if (!k) {
                 k = 'k_' + Math.random().toString(36).slice(2) + '_' + Date.now();
-                localStorage.setItem('kong_key', k);
+                sessionStorage.setItem('kong_key_session', k);
             }
             return k;
         }
@@ -363,6 +364,11 @@ a.btn-again:hover { opacity: 0.95; }
                 if (!r || !r.player1_key || !r.player2_key) return;
                 const p1 = r.player1_key;
                 const p2 = r.player2_key;
+                if (p1 === p2) {
+                    console.warn('⚠️ 동일 키로 매칭됨, 큐 초기화');
+                    await supabase.from('matchmaking').update({ player1_key: null, player2_key: null, updated_at: new Date().toISOString() }).eq('id', 1);
+                    return;
+                }
                 if (p1 !== myKey && p2 !== myKey) {
                     console.log('다른 플레이어들의 매칭입니다.');
                     return;
@@ -434,6 +440,11 @@ a.btn-again:hover { opacity: 0.95; }
                 // 매칭 큐 확인
                 const { data: q } = await supabase.from('matchmaking').select('*').eq('id', 1).single();
                 const p1 = q && q.player1_key, p2 = q && q.player2_key;
+                if (p1 && p2 && p1 === p2) {
+                    console.warn('⚠️ 동일 키로 매칭됨, 큐 초기화');
+                    await supabase.from('matchmaking').update({ player1_key: null, player2_key: null, updated_at: new Date().toISOString() }).eq('id', 1);
+                    return;
+                }
 
                 // 두 명이 모두 매칭 큐에 있을 때만 처리
                 if (p1 && p2 && (p1 === myKey || p2 === myKey)) {

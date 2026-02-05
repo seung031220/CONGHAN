@@ -252,6 +252,7 @@ a.btn-again:hover { opacity: 0.95; }
         let realtimeRoomId = null;
         let realtimeUnsub = [];
         let realtimePollTimer = null;
+        let realtimeHeartbeatTimer = null;
 
         async function leaveRealtime() {
             console.log('매칭 종료 및 정리 시작...');
@@ -259,6 +260,8 @@ a.btn-again:hover { opacity: 0.95; }
             // 타이머 정리
             if (realtimePollTimer) clearInterval(realtimePollTimer);
             realtimePollTimer = null;
+            if (realtimeHeartbeatTimer) clearInterval(realtimeHeartbeatTimer);
+            realtimeHeartbeatTimer = null;
             
             // 채널 구독 해제
             realtimeUnsub.forEach(ch => { 
@@ -363,6 +366,14 @@ a.btn-again:hover { opacity: 0.95; }
                     const { data: q } = await supabase.from('matchmaking').select('*').eq('id', 1).single();
                     if (!q) return null;
 
+                    const queueAge = q.updated_at ? (Date.now() - new Date(q.updated_at).getTime()) : Infinity;
+                    if (queueAge > 20000 && (q.player1_key || q.player2_key)) {
+                        console.warn('⚠️ 오래된 대기열 감지, 초기화', { queueAge });
+                        await supabase.from('matchmaking').update({ player1_key: null, player2_key: null, updated_at: new Date().toISOString() }).eq('id', 1);
+                        await new Promise(resolve => setTimeout(resolve, 200));
+                        continue;
+                    }
+
                     if (q.player1_key === myKey || q.player2_key === myKey) {
                         return q.player1_key === myKey ? 'player1' : 'player2';
                     }
@@ -397,13 +408,34 @@ a.btn-again:hover { opacity: 0.95; }
                 return null;
             }
 
+            function startQueueHeartbeat(role) {
+                if (realtimeHeartbeatTimer) clearInterval(realtimeHeartbeatTimer);
+                realtimeHeartbeatTimer = setInterval(async () => {
+                    try {
+                        const { data: q } = await supabase.from('matchmaking').select('player1_key, player2_key').eq('id', 1).single();
+                        if (!q) return;
+                        const stillMine = (role === 'player1' && q.player1_key === myKey) || (role === 'player2' && q.player2_key === myKey);
+                        if (!stillMine) {
+                            clearInterval(realtimeHeartbeatTimer);
+                            realtimeHeartbeatTimer = null;
+                            return;
+                        }
+                        await supabase.from('matchmaking').update({ updated_at: new Date().toISOString() }).eq('id', 1);
+                    } catch (e) {
+                        console.error('대기열 하트비트 오류:', e);
+                    }
+                }, 5000);
+            }
+
             const role = await claimQueueSlot();
             if (role === 'player1') {
                 console.log('Player1로 대기열에 추가 완료');
                 document.getElementById('realtimeStatus').textContent = '상대를 찾는 중... (Player1)';
+                startQueueHeartbeat('player1');
             } else if (role === 'player2') {
                 console.log('Player2로 대기열에 추가 완료');
                 document.getElementById('realtimeStatus').textContent = '상대를 찾는 중... (Player2)';
+                startQueueHeartbeat('player2');
             } else if (role === 'full') {
                 document.getElementById('realtimeStatus').textContent = '대기열이 가득 찼습니다. 잠시 후 다시 시도해 주세요.';
                 console.warn('대기열이 가득 참');
@@ -496,6 +528,12 @@ a.btn-again:hover { opacity: 0.95; }
                 // 매칭 큐 확인
                 const { data: q } = await supabase.from('matchmaking').select('*').eq('id', 1).single();
                 const p1 = q && q.player1_key, p2 = q && q.player2_key;
+                const queueAge = q && q.updated_at ? (Date.now() - new Date(q.updated_at).getTime()) : Infinity;
+                if (queueAge > 20000 && (p1 || p2)) {
+                    console.warn('⚠️ 오래된 대기열 감지, 초기화', { queueAge });
+                    await supabase.from('matchmaking').update({ player1_key: null, player2_key: null, updated_at: new Date().toISOString() }).eq('id', 1);
+                    return;
+                }
                 if (p1 && p2 && p1 === p2) {
                     console.warn('⚠️ 동일 키로 매칭됨, 큐 초기화');
                     await supabase.from('matchmaking').update({ player1_key: null, player2_key: null, updated_at: new Date().toISOString() }).eq('id', 1);
@@ -618,6 +656,8 @@ a.btn-again:hover { opacity: 0.95; }
             // 기존 연결 정리
             if (realtimePollTimer) clearInterval(realtimePollTimer);
             realtimePollTimer = null;
+            if (realtimeHeartbeatTimer) clearInterval(realtimeHeartbeatTimer);
+            realtimeHeartbeatTimer = null;
             realtimeUnsub.forEach(ch => { try { ch.unsubscribe(); } catch(e) {} });
             realtimeUnsub.length = 0;
             realtimeRoomId = roomId;

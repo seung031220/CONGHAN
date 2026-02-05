@@ -29,6 +29,9 @@ CREATE TABLE IF NOT EXISTS rooms (
 );
 
 -- Realtime: Supabase 대시보드 > Database > Replication 에서 rooms, matchmaking 테이블 체크
+-- 또는 아래 SQL로 직접 활성화 가능:
+-- ALTER PUBLICATION supabase_realtime ADD TABLE matchmaking;
+-- ALTER PUBLICATION supabase_realtime ADD TABLE rooms;
 
 -- RLS: 익명 읽기/쓰기 허용 (데모용)
 ALTER TABLE matchmaking ENABLE ROW LEVEL SECURITY;

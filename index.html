@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>에어팟 짝 찾아주기 - 실시간 가위바위보</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎧 에어팟 짝 찾아주기</h1>
+            <p class="subtitle">실시간 가위바위보로 짝을 찾아보세요!</p>
+        </header>
+
+        <div class="main-content">
+            <div class="player-info">
+                <div class="input-group">
+                    <label for="playerName">이름 입력</label>
+                    <input type="text" id="playerName" placeholder="이름을 입력하세요" maxlength="10">
+                </div>
+                <button id="joinBtn" class="btn btn-primary">게임 참여하기</button>
+            </div>
+
+            <div id="waitingRoom" class="waiting-room hidden">
+                <div class="status">
+                    <p id="statusText">상대방을 기다리는 중...</p>
+                    <div class="loader"></div>
+                </div>
+                <button id="cancelBtn" class="btn btn-secondary">취소</button>
+            </div>
+
+            <div id="gameRoom" class="game-room hidden">
+                <div class="opponent-info">
+                    <h3>상대방: <span id="opponentName">-</span></h3>
+                </div>
+                
+                <div class="game-area">
+                    <div class="choices">
+                        <button class="choice-btn" data-choice="rock">
+                            <span class="emoji">✊</span>
+                            <span>바위</span>
+                        </button>
+                        <button class="choice-btn" data-choice="paper">
+                            <span class="emoji">✋</span>
+                            <span>보</span>
+                        </button>
+                        <button class="choice-btn" data-choice="scissors">
+                            <span class="emoji">✌️</span>
+                            <span>가위</span>
+                        </button>
+                    </div>
+                    
+                    <div id="gameStatus" class="game-status">
+                        <p id="gameStatusText">가위, 바위, 보를 선택하세요!</p>
+                    </div>
+                </div>
+
+                <div id="resultArea" class="result-area hidden">
+                    <div class="result-display">
+                        <div class="player-result">
+                            <p>당신</p>
+                            <div class="choice-display" id="myChoice">-</div>
+                        </div>
+                        <div class="vs">VS</div>
+                        <div class="player-result">
+                            <p>상대방</p>
+                            <div class="choice-display" id="opponentChoice">-</div>
+                        </div>
+                    </div>
+                    <div id="resultText" class="result-text"></div>
+                    <button id="playAgainBtn" class="btn btn-primary">다시 하기</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+</html>

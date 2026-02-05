@@ -539,33 +539,9 @@ a.btn-again:hover { opacity: 0.95; }
                     // 상대방이 있을 때만 선택 버튼 표시
                     rtChoices.style.display = 'flex';
                     rtWaiting.style.display = 'none';
+                    // 버튼 상태만 업데이트 (이벤트 리스너는 enterRoom에서 연결됨)
                     rtChoices.querySelectorAll('.rt-choice').forEach(btn => {
                         btn.disabled = !!myChoice;
-                        // 이벤트 리스너가 없으면 추가 (Player2 입장 시 대비)
-                        if (!btn.hasAttribute('data-listener-attached')) {
-                            btn.setAttribute('data-listener-attached', 'true');
-                            btn.onclick = async () => {
-                                if (btn.disabled) return; // 이미 선택했으면 무시
-                                const choice = btn.dataset.choice;
-                                console.log('선택:', choice, 'Player', amPlayer1 ? '1' : '2');
-                                if (amPlayer1) {
-                                    await supabase.from('rooms').update({ p1_choice: choice }).eq('id', roomId);
-                                } else {
-                                    await supabase.from('rooms').update({ p2_choice: choice }).eq('id', roomId);
-                                }
-                                const { data: room } = await supabase.from('rooms').select('*').eq('id', roomId).single();
-                                if (room && room.p1_choice && room.p2_choice && amPlayer1) {
-                                    const res = computeResult(room.p1_choice, room.p2_choice);
-                                    let ns1 = room.p1_score, ns2 = room.p2_score;
-                                    if (res === 'win') ns1++; else if (res === 'lose') ns2++;
-                                    await supabase.from('rooms').update({
-                                        p1_score: ns1,
-                                        p2_score: ns2,
-                                        status: 'done'
-                                    }).eq('id', roomId);
-                                }
-                            };
-                        }
                     });
                     if (!myChoice) rtResultMsg.textContent = '';
                 }
@@ -576,6 +552,10 @@ a.btn-again:hover { opacity: 0.95; }
                 if (data) {
                     console.log('방 데이터 로드:', data);
                     renderRoom(data);
+                    // renderRoom 후에 이벤트 리스너 다시 연결 (버튼이 다시 생성될 수 있음)
+                    setTimeout(() => {
+                        attachChoiceListeners();
+                    }, 100);
                 } else {
                     console.error('방 데이터를 찾을 수 없습니다:', roomId);
                     document.getElementById('realtimeStatus').textContent = '상대방을 찾는 중...';
@@ -599,50 +579,89 @@ a.btn-again:hover { opacity: 0.95; }
                 if (payload.new) {
                     renderRoom(payload.new);
                     await applyScoreIfBothChose(payload.new);
+                    // renderRoom 후에 이벤트 리스너 확인 (버튼 상태 변경 시)
+                    setTimeout(() => {
+                        const buttons = rtChoices.querySelectorAll('.rt-choice');
+                        buttons.forEach(btn => {
+                            if (!btn.onclick && !btn.disabled) {
+                                attachChoiceListeners();
+                            }
+                        });
+                    }, 50);
                 }
             });
             chRoom.subscribe();
             realtimeUnsub.push(chRoom);
 
-            // 선택 버튼에 이벤트 리스너 연결 (초기 설정)
-            rtChoices.querySelectorAll('.rt-choice').forEach(btn => {
-                // 이미 리스너가 있으면 제거하고 다시 추가
-                btn.onclick = null;
-                btn.removeAttribute('data-listener-attached');
-                btn.setAttribute('data-listener-attached', 'true');
-                btn.onclick = async () => {
-                    if (btn.disabled) {
-                        console.log('이미 선택한 버튼입니다.');
-                        return;
-                    }
-                    const choice = btn.dataset.choice;
-                    console.log('선택:', choice, 'Player', amPlayer1 ? '1' : '2', 'Room:', roomId);
+            // 선택 버튼에 이벤트 리스너 연결 (한 번만 연결)
+            function attachChoiceListeners() {
+                rtChoices.querySelectorAll('.rt-choice').forEach(btn => {
+                    // 기존 이벤트 제거
+                    const newBtn = btn.cloneNode(true);
+                    btn.parentNode.replaceChild(newBtn, btn);
                     
-                    // 선택한 버튼 비활성화
-                    btn.disabled = true;
-                    rtChoices.querySelectorAll('.rt-choice').forEach(b => b.disabled = true);
-                    
-                    if (amPlayer1) {
-                        await supabase.from('rooms').update({ p1_choice: choice }).eq('id', roomId);
-                        console.log('Player1 선택 전송:', choice);
-                    } else {
-                        await supabase.from('rooms').update({ p2_choice: choice }).eq('id', roomId);
-                        console.log('Player2 선택 전송:', choice);
-                    }
-                    
-                    const { data: room } = await supabase.from('rooms').select('*').eq('id', roomId).single();
-                    if (room && room.p1_choice && room.p2_choice && amPlayer1) {
-                        const res = computeResult(room.p1_choice, room.p2_choice);
-                        let ns1 = room.p1_score, ns2 = room.p2_score;
-                        if (res === 'win') ns1++; else if (res === 'lose') ns2++;
-                        await supabase.from('rooms').update({
-                            p1_score: ns1,
-                            p2_score: ns2,
-                            status: 'done'
-                        }).eq('id', roomId);
-                    }
-                };
-            });
+                    // 새 이벤트 리스너 추가
+                    newBtn.addEventListener('click', async function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        
+                        if (newBtn.disabled) {
+                            console.log('이미 선택한 버튼입니다.');
+                            return;
+                        }
+                        
+                        const choice = newBtn.dataset.choice;
+                        console.log('버튼 클릭! 선택:', choice, 'Player', amPlayer1 ? '1' : '2', 'Room:', roomId);
+                        
+                        // 모든 버튼 비활성화 (중복 선택 방지)
+                        rtChoices.querySelectorAll('.rt-choice').forEach(b => {
+                            b.disabled = true;
+                            b.style.opacity = '0.5';
+                        });
+                        
+                        try {
+                            if (amPlayer1) {
+                                const { error } = await supabase.from('rooms').update({ p1_choice: choice }).eq('id', roomId);
+                                if (error) throw error;
+                                console.log('✅ Player1 선택 전송 완료:', choice);
+                            } else {
+                                const { error } = await supabase.from('rooms').update({ p2_choice: choice }).eq('id', roomId);
+                                if (error) throw error;
+                                console.log('✅ Player2 선택 전송 완료:', choice);
+                            }
+                            
+                            // 결과 확인 및 점수 업데이트
+                            const { data: room, error: roomError } = await supabase.from('rooms').select('*').eq('id', roomId).single();
+                            if (roomError) throw roomError;
+                            
+                            if (room && room.p1_choice && room.p2_choice && amPlayer1) {
+                                const res = computeResult(room.p1_choice, room.p2_choice);
+                                let ns1 = room.p1_score || 0, ns2 = room.p2_score || 0;
+                                if (res === 'win') ns1++; 
+                                else if (res === 'lose') ns2++;
+                                
+                                const { error: updateError } = await supabase.from('rooms').update({
+                                    p1_score: ns1,
+                                    p2_score: ns2,
+                                    status: 'done'
+                                }).eq('id', roomId);
+                                if (updateError) throw updateError;
+                                console.log('✅ 점수 업데이트 완료:', { p1_score: ns1, p2_score: ns2 });
+                            }
+                        } catch (error) {
+                            console.error('❌ 선택 전송 오류:', error);
+                            // 오류 발생 시 버튼 다시 활성화
+                            rtChoices.querySelectorAll('.rt-choice').forEach(b => {
+                                b.disabled = false;
+                                b.style.opacity = '1';
+                            });
+                        }
+                    });
+                });
+            }
+            
+            // 이벤트 리스너 연결
+            attachChoiceListeners();
         }
 
         document.getElementById('realtimeBtnAgain').addEventListener('click', async function() {

@@ -471,6 +471,24 @@ a.btn-again:hover { opacity: 0.95; }
                             enterRoom(supabase, room.id, myKey, room.player1_key, room.player2_key);
                             return;
                         }
+                    } else if (p2 === myKey) {
+                        // player2는 INSERT 이벤트를 놓칠 수 있으므로 방을 직접 찾는다
+                        const { data: existingRoom } = await supabase
+                            .from('rooms')
+                            .select('id, player1_key, player2_key')
+                            .eq('player1_key', p1)
+                            .eq('player2_key', p2)
+                            .eq('status', 'playing')
+                            .order('created_at', { ascending: false })
+                            .limit(1)
+                            .single();
+
+                        if (existingRoom && !realtimeRoomId && existingRoom.player1_key && existingRoom.player2_key) {
+                            if (realtimePollTimer) clearInterval(realtimePollTimer);
+                            realtimePollTimer = null;
+                            enterRoom(supabase, existingRoom.id, myKey, existingRoom.player1_key, existingRoom.player2_key);
+                            return;
+                        }
                     }
                     // player2는 chRooms 채널을 통해 자동으로 입장됨
                 }

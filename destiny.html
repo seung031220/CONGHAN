@@ -364,17 +364,41 @@ a.btn-again:hover { opacity: 0.95; }
 
             const chRooms = supabase.channel('my_rooms').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'rooms' }, async (payload) => {
                 const r = payload.new;
-                console.log('새 방 생성 감지:', r);
+                console.log('🔔 새 방 생성 감지 (chRooms):', r);
+                console.log('🔍 입장 조건 확인:', {
+                    hasRoom: !!r,
+                    hasP1: !!r?.player1_key,
+                    hasP2: !!r?.player2_key,
+                    isMyRoom: r && (r.player1_key === myKey || r.player2_key === myKey),
+                    alreadyInRoom: !!realtimeRoomId,
+                    myKey: myKey
+                });
                 
                 // 두 명이 모두 있어야만 입장
                 if (r && r.player1_key && r.player2_key && (r.player1_key === myKey || r.player2_key === myKey) && !realtimeRoomId) {
-                    console.log('Player2로 방 입장 중...', 'Player1:', r.player1_key, 'Player2:', r.player2_key);
+                    const isPlayer2 = r.player2_key === myKey;
+                    console.log(`✅ ${isPlayer2 ? 'Player2' : 'Player1'}로 방 입장 시작...`, {
+                        Player1: r.player1_key,
+                        Player2: r.player2_key,
+                        내키: myKey,
+                        방ID: r.id
+                    });
+                    
                     // player2가 매칭될 때 처리
                     realtimeUnsub.forEach(ch => { try { ch.unsubscribe(); } catch(e) {} });
                     realtimeUnsub.length = 0;
-                    enterRoom(supabase, r.id, myKey, r.player1_key, r.player2_key);
+                    
+                    // enterRoom 호출 전에 상태 확인
+                    console.log('🚪 enterRoom 호출 전 상태:', {
+                        realtimeRoomId,
+                        roomId: r.id
+                    });
+                    
+                    await enterRoom(supabase, r.id, myKey, r.player1_key, r.player2_key);
+                    
+                    console.log('✅ enterRoom 호출 완료');
                 } else {
-                    console.log('방 입장 조건 불만족:', {
+                    console.log('⏸️ 방 입장 조건 불만족:', {
                         hasRoom: !!r,
                         hasP1: !!r?.player1_key,
                         hasP2: !!r?.player2_key,
@@ -441,30 +465,35 @@ a.btn-again:hover { opacity: 0.95; }
         }
 
         async function enterRoom(supabase, roomId, myKey, p1Key, p2Key) {
+            console.log('🚪 enterRoom 함수 시작:', { roomId, myKey, p1Key, p2Key });
+            
             // 이미 같은 방에 있으면 중복 진입 방지
             if (realtimeRoomId === roomId) {
-                console.log('이미 같은 방에 있습니다.');
+                console.log('⏸️ 이미 같은 방에 있습니다.');
                 return;
             }
             
             // 상대방이 실제로 있는지 확인
             if (!p1Key || !p2Key) {
-                console.error('상대방이 없습니다. Player1:', p1Key, 'Player2:', p2Key);
+                console.error('❌ 상대방이 없습니다. Player1:', p1Key, 'Player2:', p2Key);
                 document.getElementById('realtimeStatus').textContent = '상대방을 찾는 중...';
                 document.getElementById('rtChoices').style.display = 'none';
                 return;
             }
             
             // 실제 방 데이터를 다시 확인하여 상대방이 확실히 있는지 검증
-            const { data: roomData } = await supabase.from('rooms').select('player1_key, player2_key, status').eq('id', roomId).single();
+            const { data: roomData, error: roomDataError } = await supabase.from('rooms').select('player1_key, player2_key, status').eq('id', roomId).single();
+            if (roomDataError) {
+                console.error('❌ 방 데이터 조회 오류:', roomDataError);
+            }
             if (!roomData || !roomData.player1_key || !roomData.player2_key) {
-                console.error('방 데이터에 상대방이 없습니다:', roomData);
+                console.error('❌ 방 데이터에 상대방이 없습니다:', roomData);
                 document.getElementById('realtimeStatus').textContent = '상대방을 찾는 중...';
                 document.getElementById('rtChoices').style.display = 'none';
                 return;
             }
             
-            console.log('방 입장:', roomId, 'Player1:', p1Key, 'Player2:', p2Key, '내 키:', myKey);
+            console.log('✅ 방 입장:', { roomId, Player1: p1Key, Player2: p2Key, 내키: myKey });
             
             // 기존 연결 정리
             if (realtimePollTimer) clearInterval(realtimePollTimer);
@@ -473,7 +502,7 @@ a.btn-again:hover { opacity: 0.95; }
             realtimeUnsub.length = 0;
             realtimeRoomId = roomId;
             const amPlayer1 = p1Key === myKey;
-            console.log('나는 Player', amPlayer1 ? '1' : '2');
+            console.log(`👤 나는 Player ${amPlayer1 ? '1' : '2'}`);
             
             // DOM 요소 먼저 가져오기
             const rtMyScoreEl = document.getElementById('rtMyScore');
@@ -641,57 +670,86 @@ a.btn-again:hover { opacity: 0.95; }
                 }
             }
 
-            // 방 데이터를 가져와서 초기 렌더링
-            supabase.from('rooms').select('*').eq('id', roomId).single().then(({ data }) => { 
+            // 방 데이터를 가져와서 초기 렌더링 (Player1과 Player2 모두 동일하게 처리)
+            console.log(`📥 ${amPlayer1 ? 'Player1' : 'Player2'} 방 데이터 로드 시작...`);
+            supabase.from('rooms').select('*').eq('id', roomId).single().then(({ data, error }) => { 
+                if (error) {
+                    console.error('❌ 방 데이터 조회 오류:', error);
+                    document.getElementById('realtimeStatus').textContent = '상대방을 찾는 중...';
+                    document.getElementById('rtChoices').style.display = 'none';
+                    return;
+                }
+                
                 if (data) {
-                    console.log('📦 방 데이터 로드:', data);
+                    console.log(`📦 ${amPlayer1 ? 'Player1' : 'Player2'} 방 데이터 로드 완료:`, data);
                     console.log('🔍 버튼 표시 전 rtChoices 상태:', {
                         display: rtChoices.style.display,
                         visibility: rtChoices.style.visibility,
                         buttons: rtChoices.querySelectorAll('.rt-choice').length,
-                        offsetHeight: rtChoices.offsetHeight
+                        offsetHeight: rtChoices.offsetHeight,
+                        player: amPlayer1 ? 'Player1' : 'Player2'
                     });
                     
                     // renderRoom 호출
                     renderRoom(data);
                     
-                    console.log('🔍 버튼 표시 후 rtChoices 상태:', {
+                    console.log(`🔍 ${amPlayer1 ? 'Player1' : 'Player2'} 버튼 표시 후 rtChoices 상태:`, {
                         display: rtChoices.style.display,
                         visibility: rtChoices.style.visibility,
                         buttons: rtChoices.querySelectorAll('.rt-choice').length,
                         offsetHeight: rtChoices.offsetHeight,
-                        computedDisplay: window.getComputedStyle(rtChoices).display
+                        computedDisplay: window.getComputedStyle(rtChoices).display,
+                        computedVisibility: window.getComputedStyle(rtChoices).visibility
                     });
                     
-                    // renderRoom 후에 이벤트 리스너 다시 연결 (확실하게)
+                    // renderRoom 후에 이벤트 리스너 다시 연결 (Player2를 위해 더 확실하게)
                     setTimeout(() => {
-                        console.log('🔗 renderRoom 후 이벤트 리스너 재연결');
+                        console.log(`🔗 ${amPlayer1 ? 'Player1' : 'Player2'} renderRoom 후 이벤트 리스너 재연결`);
                         attachChoiceListeners();
                         
-                        // 버튼이 정말 보이는지 최종 확인
+                        // 버튼이 정말 보이는지 최종 확인 (Player2 특별 확인)
                         const finalCheck = rtChoices.querySelectorAll('.rt-choice');
-                        console.log('✅ 최종 확인:', {
+                        const computedStyle = window.getComputedStyle(rtChoices);
+                        console.log(`✅ ${amPlayer1 ? 'Player1' : 'Player2'} 최종 확인:`, {
                             버튼개수: finalCheck.length,
                             표시상태: rtChoices.style.display,
-                            계산된표시: window.getComputedStyle(rtChoices).display,
+                            계산된표시: computedStyle.display,
+                            계산된가시성: computedStyle.visibility,
                             높이: rtChoices.offsetHeight,
-                            너비: rtChoices.offsetWidth
+                            너비: rtChoices.offsetWidth,
+                            opacity: computedStyle.opacity
                         });
                         
                         if (finalCheck.length === 0) {
-                            console.error('❌ 버튼이 없습니다!');
+                            console.error(`❌ ${amPlayer1 ? 'Player1' : 'Player2'} 버튼이 없습니다!`);
                         }
-                        if (rtChoices.offsetHeight === 0) {
-                            console.warn('⚠️ 버튼 컨테이너 높이가 0입니다!');
+                        if (rtChoices.offsetHeight === 0 || computedStyle.display === 'none') {
+                            console.warn(`⚠️ ${amPlayer1 ? 'Player1' : 'Player2'} 버튼 컨테이너가 숨겨져 있습니다! 강제 표시 시도`);
                             rtChoices.style.display = 'flex';
-                            rtChoices.setAttribute('style', 'display: flex !important;');
+                            rtChoices.style.visibility = 'visible';
+                            rtChoices.setAttribute('style', 'display: flex !important; visibility: visible !important; opacity: 1 !important;');
+                            
+                            // 다시 한 번 확인
+                            setTimeout(() => {
+                                const recheck = rtChoices.querySelectorAll('.rt-choice');
+                                console.log(`🔄 ${amPlayer1 ? 'Player1' : 'Player2'} 재확인:`, {
+                                    버튼개수: recheck.length,
+                                    높이: rtChoices.offsetHeight,
+                                    표시: window.getComputedStyle(rtChoices).display
+                                });
+                                if (recheck.length > 0 && rtChoices.offsetHeight > 0) {
+                                    attachChoiceListeners();
+                                }
+                            }, 200);
                         }
                     }, 500);
                 } else {
-                    console.error('❌ 방 데이터를 찾을 수 없습니다:', roomId);
+                    console.error(`❌ ${amPlayer1 ? 'Player1' : 'Player2'} 방 데이터를 찾을 수 없습니다:`, roomId);
                     document.getElementById('realtimeStatus').textContent = '상대방을 찾는 중...';
                     document.getElementById('rtChoices').style.display = 'none';
                 }
+            }).catch(error => {
+                console.error(`❌ ${amPlayer1 ? 'Player1' : 'Player2'} 방 데이터 로드 중 오류:`, error);
             });
 
             async function applyScoreIfBothChose(room) {
@@ -708,20 +766,37 @@ a.btn-again:hover { opacity: 0.95; }
 
             const chRoom = supabase.channel('room_' + roomId.replace(/-/g, '_')).on('postgres_changes', { event: '*', schema: 'public', table: 'rooms', filter: 'id=eq.' + roomId }, async (payload) => {
                 if (payload.new) {
-                    console.log('방 상태 변경 감지:', payload.new);
+                    console.log(`🔄 ${amPlayer1 ? 'Player1' : 'Player2'} 방 상태 변경 감지:`, payload.new);
                     renderRoom(payload.new);
                     await applyScoreIfBothChose(payload.new);
-                    // renderRoom 후에 이벤트 리스너 확인 및 재연결
+                    
+                    // renderRoom 후에 이벤트 리스너 확인 및 재연결 (Player2를 위해 더 확실하게)
                     setTimeout(() => {
                         const buttons = rtChoices.querySelectorAll('.rt-choice');
                         const hasDisabledButtons = Array.from(buttons).some(btn => btn.disabled);
-                        const hasVisibleButtons = rtChoices.style.display === 'flex';
+                        const computedDisplay = window.getComputedStyle(rtChoices).display;
+                        const hasVisibleButtons = rtChoices.style.display === 'flex' || computedDisplay === 'flex';
                         
-                        if (hasVisibleButtons && !hasDisabledButtons) {
-                            console.log('버튼이 활성화되어 있으므로 이벤트 리스너 재연결');
-                            attachChoiceListeners();
+                        console.log(`🔍 ${amPlayer1 ? 'Player1' : 'Player2'} 이벤트 리스너 확인:`, {
+                            버튼개수: buttons.length,
+                            비활성화버튼있음: hasDisabledButtons,
+                            표시됨: hasVisibleButtons,
+                            계산된표시: computedDisplay
+                        });
+                        
+                        // Player2의 경우 더 적극적으로 재연결
+                        if (hasVisibleButtons) {
+                            if (!hasDisabledButtons || !amPlayer1) {
+                                console.log(`🔗 ${amPlayer1 ? 'Player1' : 'Player2'} 버튼이 활성화되어 있으므로 이벤트 리스너 재연결`);
+                                attachChoiceListeners();
+                            }
+                        } else {
+                            console.warn(`⚠️ ${amPlayer1 ? 'Player1' : 'Player2'} 버튼이 표시되지 않음, 강제 표시 시도`);
+                            rtChoices.style.display = 'flex';
+                            rtChoices.setAttribute('style', 'display: flex !important;');
+                            setTimeout(() => attachChoiceListeners(), 100);
                         }
-                    }, 100);
+                    }, 200);
                 }
             });
             chRoom.subscribe();

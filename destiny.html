@@ -470,10 +470,7 @@ a.btn-again:hover { opacity: 0.95; }
             const amPlayer1 = p1Key === myKey;
             console.log('나는 Player', amPlayer1 ? '1' : '2');
             
-            // 상대방이 확실히 있을 때만 UI 표시
-            document.getElementById('realtimeStatus').textContent = '✅ 상대를 찾았습니다!';
-            document.getElementById('realtimeStatus').classList.add('found');
-            // renderRoom에서 상태에 따라 표시/숨김 처리
+            // 아직 "상대를 찾는 중..." 상태 유지 (renderRoom에서 변경됨)
 
             const rtMyScoreEl = document.getElementById('rtMyScore');
             const rtOppScoreEl = document.getElementById('rtOppScore');
@@ -496,6 +493,10 @@ a.btn-again:hover { opacity: 0.95; }
                     document.getElementById('realtimeStatus').classList.remove('found');
                     return;
                 }
+                
+                // 상대방이 있으면 매칭 완료 메시지 표시
+                document.getElementById('realtimeStatus').textContent = '✅ 상대를 찾았습니다!';
+                document.getElementById('realtimeStatus').classList.add('found');
                 
                 const myScore = amPlayer1 ? room.p1_score : room.p2_score;
                 const oppScore = amPlayer1 ? room.p2_score : room.p1_score;
@@ -539,11 +540,23 @@ a.btn-again:hover { opacity: 0.95; }
                     // 상대방이 있을 때만 선택 버튼 표시
                     rtChoices.style.display = 'flex';
                     rtWaiting.style.display = 'none';
-                    // 버튼 상태만 업데이트 (이벤트 리스너는 enterRoom에서 연결됨)
+                    rtFinal.style.display = 'none';
+                    
+                    // 버튼 상태 업데이트 및 이벤트 리스너 확인
                     rtChoices.querySelectorAll('.rt-choice').forEach(btn => {
                         btn.disabled = !!myChoice;
+                        // 선택하지 않았으면 버튼 활성화
+                        if (!myChoice) {
+                            btn.style.opacity = '1';
+                            btn.style.cursor = 'pointer';
+                        }
                     });
-                    if (!myChoice) rtResultMsg.textContent = '';
+                    
+                    if (!myChoice) {
+                        rtResultMsg.textContent = '';
+                        // 이벤트 리스너가 없으면 추가
+                        attachChoiceListeners();
+                    }
                 }
             }
 
@@ -552,10 +565,11 @@ a.btn-again:hover { opacity: 0.95; }
                 if (data) {
                     console.log('방 데이터 로드:', data);
                     renderRoom(data);
-                    // renderRoom 후에 이벤트 리스너 다시 연결 (버튼이 다시 생성될 수 있음)
+                    // renderRoom 후에 이벤트 리스너 다시 연결 (확실하게)
                     setTimeout(() => {
+                        console.log('renderRoom 후 이벤트 리스너 재연결');
                         attachChoiceListeners();
-                    }, 100);
+                    }, 200);
                 } else {
                     console.error('방 데이터를 찾을 수 없습니다:', roomId);
                     document.getElementById('realtimeStatus').textContent = '상대방을 찾는 중...';
@@ -577,33 +591,44 @@ a.btn-again:hover { opacity: 0.95; }
 
             const chRoom = supabase.channel('room_' + roomId.replace(/-/g, '_')).on('postgres_changes', { event: '*', schema: 'public', table: 'rooms', filter: 'id=eq.' + roomId }, async (payload) => {
                 if (payload.new) {
+                    console.log('방 상태 변경 감지:', payload.new);
                     renderRoom(payload.new);
                     await applyScoreIfBothChose(payload.new);
-                    // renderRoom 후에 이벤트 리스너 확인 (버튼 상태 변경 시)
+                    // renderRoom 후에 이벤트 리스너 확인 및 재연결
                     setTimeout(() => {
                         const buttons = rtChoices.querySelectorAll('.rt-choice');
-                        buttons.forEach(btn => {
-                            if (!btn.onclick && !btn.disabled) {
-                                attachChoiceListeners();
-                            }
-                        });
-                    }, 50);
+                        const hasDisabledButtons = Array.from(buttons).some(btn => btn.disabled);
+                        const hasVisibleButtons = rtChoices.style.display === 'flex';
+                        
+                        if (hasVisibleButtons && !hasDisabledButtons) {
+                            console.log('버튼이 활성화되어 있으므로 이벤트 리스너 재연결');
+                            attachChoiceListeners();
+                        }
+                    }, 100);
                 }
             });
             chRoom.subscribe();
             realtimeUnsub.push(chRoom);
 
-            // 선택 버튼에 이벤트 리스너 연결 (한 번만 연결)
+            // 선택 버튼에 이벤트 리스너 연결 함수
             function attachChoiceListeners() {
-                rtChoices.querySelectorAll('.rt-choice').forEach(btn => {
-                    // 기존 이벤트 제거
+                console.log('이벤트 리스너 연결 시작...');
+                const buttons = rtChoices.querySelectorAll('.rt-choice');
+                console.log('찾은 버튼 개수:', buttons.length);
+                
+                buttons.forEach((btn, index) => {
+                    // 기존 이벤트 제거를 위해 새 버튼으로 교체
                     const newBtn = btn.cloneNode(true);
                     btn.parentNode.replaceChild(newBtn, btn);
+                    
+                    console.log(`버튼 ${index + 1} 이벤트 리스너 추가:`, newBtn.dataset.choice);
                     
                     // 새 이벤트 리스너 추가
                     newBtn.addEventListener('click', async function(e) {
                         e.preventDefault();
                         e.stopPropagation();
+                        
+                        console.log('버튼 클릭 이벤트 발생!', newBtn.dataset.choice);
                         
                         if (newBtn.disabled) {
                             console.log('이미 선택한 버튼입니다.');
@@ -611,12 +636,13 @@ a.btn-again:hover { opacity: 0.95; }
                         }
                         
                         const choice = newBtn.dataset.choice;
-                        console.log('버튼 클릭! 선택:', choice, 'Player', amPlayer1 ? '1' : '2', 'Room:', roomId);
+                        console.log('✅ 버튼 클릭! 선택:', choice, 'Player', amPlayer1 ? '1' : '2', 'Room:', roomId);
                         
                         // 모든 버튼 비활성화 (중복 선택 방지)
                         rtChoices.querySelectorAll('.rt-choice').forEach(b => {
                             b.disabled = true;
                             b.style.opacity = '0.5';
+                            b.style.cursor = 'not-allowed';
                         });
                         
                         try {
@@ -654,13 +680,15 @@ a.btn-again:hover { opacity: 0.95; }
                             rtChoices.querySelectorAll('.rt-choice').forEach(b => {
                                 b.disabled = false;
                                 b.style.opacity = '1';
+                                b.style.cursor = 'pointer';
                             });
                         }
                     });
                 });
+                console.log('이벤트 리스너 연결 완료');
             }
             
-            // 이벤트 리스너 연결
+            // 즉시 이벤트 리스너 연결
             attachChoiceListeners();
         }
 

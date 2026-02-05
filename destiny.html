@@ -475,11 +475,7 @@ a.btn-again:hover { opacity: 0.95; }
             const amPlayer1 = p1Key === myKey;
             console.log('나는 Player', amPlayer1 ? '1' : '2');
             
-            // 아직 "상대를 찾는 중..." 상태 유지 (renderRoom에서 변경됨)
-            // 버튼 컨테이너 초기화
-            rtChoices.style.display = 'none';
-            rtChoices.style.visibility = 'hidden';
-
+            // DOM 요소 먼저 가져오기
             const rtMyScoreEl = document.getElementById('rtMyScore');
             const rtOppScoreEl = document.getElementById('rtOppScore');
             const rtRoundInfo = document.getElementById('rtRoundInfo');
@@ -489,6 +485,13 @@ a.btn-again:hover { opacity: 0.95; }
             const rtFinal = document.getElementById('realtimeFinal');
             const rtFinalTitle = document.getElementById('rtFinalTitle');
             const rtFinalDesc = document.getElementById('rtFinalDesc');
+            
+            // 초기 상태 설정
+            console.log('방 입장 초기화 - 버튼 숨김');
+            rtChoices.style.display = 'none';
+            rtChoices.style.visibility = 'hidden';
+            rtWaiting.style.display = 'none';
+            rtFinal.style.display = 'none';
 
             function renderRoom(room) {
                 // 상대방이 없으면 게임 UI 숨김
@@ -546,53 +549,94 @@ a.btn-again:hover { opacity: 0.95; }
                     rtWaiting.style.display = 'block';
                 } else {
                     // 상대방이 있을 때만 선택 버튼 표시
-                    console.log('게임 진행 중 - 버튼 표시', { 
+                    console.log('🎮 게임 진행 중 - 버튼 표시 시작', { 
                         myChoice, 
                         bothChose, 
                         status: room.status,
                         p1_choice: room.p1_choice,
                         p2_choice: room.p2_choice,
                         player1_key: room.player1_key,
-                        player2_key: room.player2_key
+                        player2_key: room.player2_key,
+                        amPlayer1: amPlayer1
                     });
                     
-                    // 버튼 컨테이너 확실하게 표시
-                    rtChoices.style.display = 'flex';
-                    rtChoices.style.visibility = 'visible';
-                    rtChoices.style.opacity = '1';
+                    // 다른 UI 요소 숨기기
                     rtWaiting.style.display = 'none';
                     rtFinal.style.display = 'none';
                     
-                    console.log('버튼 컨테이너 표시 완료:', {
+                    // 버튼 컨테이너 강제로 표시 (여러 방법으로)
+                    rtChoices.style.display = 'flex';
+                    rtChoices.style.visibility = 'visible';
+                    rtChoices.style.opacity = '1';
+                    rtChoices.style.height = 'auto';
+                    rtChoices.style.width = 'auto';
+                    rtChoices.removeAttribute('hidden');
+                    rtChoices.classList.remove('hidden');
+                    
+                    // 인라인 스타일로 강제 설정
+                    rtChoices.setAttribute('style', 'display: flex !important; visibility: visible !important; opacity: 1 !important;');
+                    
+                    console.log('✅ 버튼 컨테이너 표시 완료:', {
                         display: rtChoices.style.display,
                         visibility: rtChoices.style.visibility,
-                        computedDisplay: window.getComputedStyle(rtChoices).display
+                        computedDisplay: window.getComputedStyle(rtChoices).display,
+                        computedVisibility: window.getComputedStyle(rtChoices).visibility,
+                        offsetHeight: rtChoices.offsetHeight,
+                        offsetWidth: rtChoices.offsetWidth
                     });
                     
                     // 버튼 상태 업데이트 및 이벤트 리스너 확인
                     const buttons = rtChoices.querySelectorAll('.rt-choice');
-                    console.log('찾은 버튼 개수:', buttons.length);
+                    console.log('🔘 찾은 버튼 개수:', buttons.length);
+                    
+                    if (buttons.length === 0) {
+                        console.error('❌ 버튼을 찾을 수 없습니다!');
+                    }
                     
                     buttons.forEach((btn, index) => {
-                        btn.disabled = !!myChoice;
-                        // 선택하지 않았으면 버튼 활성화
+                        const shouldDisable = !!myChoice;
+                        btn.disabled = shouldDisable;
+                        
+                        // 선택하지 않았으면 버튼 완전히 활성화
                         if (!myChoice) {
                             btn.style.opacity = '1';
                             btn.style.cursor = 'pointer';
                             btn.style.pointerEvents = 'auto';
-                            console.log(`버튼 ${index + 1} 활성화:`, btn.dataset.choice);
+                            btn.removeAttribute('disabled');
+                            btn.classList.remove('disabled');
+                            console.log(`✅ 버튼 ${index + 1} 활성화:`, btn.dataset.choice, {
+                                disabled: btn.disabled,
+                                opacity: btn.style.opacity,
+                                display: window.getComputedStyle(btn).display
+                            });
                         } else {
                             btn.style.opacity = '0.5';
                             btn.style.cursor = 'not-allowed';
-                            console.log(`버튼 ${index + 1} 비활성화 (이미 선택함):`, btn.dataset.choice);
+                            btn.setAttribute('disabled', 'disabled');
+                            console.log(`⏸️ 버튼 ${index + 1} 비활성화 (이미 선택함):`, btn.dataset.choice);
                         }
                     });
                     
                     if (!myChoice) {
                         rtResultMsg.textContent = '';
-                        // 이벤트 리스너 연결
-                        console.log('이벤트 리스너 연결 시도...');
+                        // 이벤트 리스너 연결 (즉시)
+                        console.log('🔗 이벤트 리스너 연결 시도...');
                         attachChoiceListeners();
+                        
+                        // 추가 확인 (0.5초 후)
+                        setTimeout(() => {
+                            const checkButtons = rtChoices.querySelectorAll('.rt-choice');
+                            console.log('🔍 이벤트 리스너 확인:', {
+                                버튼개수: checkButtons.length,
+                                표시상태: rtChoices.style.display,
+                                계산된표시: window.getComputedStyle(rtChoices).display
+                            });
+                            if (rtChoices.style.display !== 'flex' && window.getComputedStyle(rtChoices).display !== 'flex') {
+                                console.warn('⚠️ 버튼이 여전히 숨겨져 있음, 강제 표시');
+                                rtChoices.style.display = 'flex';
+                                rtChoices.setAttribute('style', 'display: flex !important;');
+                            }
+                        }, 500);
                     }
                 }
             }
@@ -600,25 +644,51 @@ a.btn-again:hover { opacity: 0.95; }
             // 방 데이터를 가져와서 초기 렌더링
             supabase.from('rooms').select('*').eq('id', roomId).single().then(({ data }) => { 
                 if (data) {
-                    console.log('방 데이터 로드:', data);
-                    console.log('버튼 표시 전 rtChoices 상태:', {
+                    console.log('📦 방 데이터 로드:', data);
+                    console.log('🔍 버튼 표시 전 rtChoices 상태:', {
                         display: rtChoices.style.display,
                         visibility: rtChoices.style.visibility,
-                        buttons: rtChoices.querySelectorAll('.rt-choice').length
+                        buttons: rtChoices.querySelectorAll('.rt-choice').length,
+                        offsetHeight: rtChoices.offsetHeight
                     });
+                    
+                    // renderRoom 호출
                     renderRoom(data);
-                    console.log('버튼 표시 후 rtChoices 상태:', {
+                    
+                    console.log('🔍 버튼 표시 후 rtChoices 상태:', {
                         display: rtChoices.style.display,
                         visibility: rtChoices.style.visibility,
-                        buttons: rtChoices.querySelectorAll('.rt-choice').length
+                        buttons: rtChoices.querySelectorAll('.rt-choice').length,
+                        offsetHeight: rtChoices.offsetHeight,
+                        computedDisplay: window.getComputedStyle(rtChoices).display
                     });
+                    
                     // renderRoom 후에 이벤트 리스너 다시 연결 (확실하게)
                     setTimeout(() => {
-                        console.log('renderRoom 후 이벤트 리스너 재연결');
+                        console.log('🔗 renderRoom 후 이벤트 리스너 재연결');
                         attachChoiceListeners();
-                    }, 300);
+                        
+                        // 버튼이 정말 보이는지 최종 확인
+                        const finalCheck = rtChoices.querySelectorAll('.rt-choice');
+                        console.log('✅ 최종 확인:', {
+                            버튼개수: finalCheck.length,
+                            표시상태: rtChoices.style.display,
+                            계산된표시: window.getComputedStyle(rtChoices).display,
+                            높이: rtChoices.offsetHeight,
+                            너비: rtChoices.offsetWidth
+                        });
+                        
+                        if (finalCheck.length === 0) {
+                            console.error('❌ 버튼이 없습니다!');
+                        }
+                        if (rtChoices.offsetHeight === 0) {
+                            console.warn('⚠️ 버튼 컨테이너 높이가 0입니다!');
+                            rtChoices.style.display = 'flex';
+                            rtChoices.setAttribute('style', 'display: flex !important;');
+                        }
+                    }, 500);
                 } else {
-                    console.error('방 데이터를 찾을 수 없습니다:', roomId);
+                    console.error('❌ 방 데이터를 찾을 수 없습니다:', roomId);
                     document.getElementById('realtimeStatus').textContent = '상대방을 찾는 중...';
                     document.getElementById('rtChoices').style.display = 'none';
                 }
@@ -659,37 +729,45 @@ a.btn-again:hover { opacity: 0.95; }
 
             // 선택 버튼에 이벤트 리스너 연결 함수
             function attachChoiceListeners() {
-                console.log('이벤트 리스너 연결 시작...');
+                console.log('🔗 이벤트 리스너 연결 시작...');
                 const buttons = rtChoices.querySelectorAll('.rt-choice');
-                console.log('찾은 버튼 개수:', buttons.length);
+                console.log('🔘 찾은 버튼 개수:', buttons.length);
+                
+                if (buttons.length === 0) {
+                    console.error('❌ 버튼을 찾을 수 없습니다! rtChoices:', rtChoices);
+                    return;
+                }
                 
                 buttons.forEach((btn, index) => {
-                    // 기존 이벤트 제거를 위해 새 버튼으로 교체
-                    const newBtn = btn.cloneNode(true);
-                    btn.parentNode.replaceChild(newBtn, btn);
+                    // 기존 이벤트 완전히 제거
+                    const oldBtn = btn;
+                    const newBtn = oldBtn.cloneNode(true);
+                    oldBtn.parentNode.replaceChild(newBtn, oldBtn);
                     
-                    console.log(`버튼 ${index + 1} 이벤트 리스너 추가:`, newBtn.dataset.choice);
+                    console.log(`🔗 버튼 ${index + 1} 이벤트 리스너 추가:`, newBtn.dataset.choice);
                     
-                    // 새 이벤트 리스너 추가
+                    // 클릭 이벤트 리스너 추가
                     newBtn.addEventListener('click', async function(e) {
                         e.preventDefault();
                         e.stopPropagation();
                         
-                        console.log('버튼 클릭 이벤트 발생!', newBtn.dataset.choice);
+                        console.log('🖱️ 버튼 클릭 이벤트 발생!', newBtn.dataset.choice);
                         
-                        if (newBtn.disabled) {
-                            console.log('이미 선택한 버튼입니다.');
+                        if (newBtn.disabled || newBtn.hasAttribute('disabled')) {
+                            console.log('⏸️ 이미 선택한 버튼입니다.');
                             return;
                         }
                         
                         const choice = newBtn.dataset.choice;
                         console.log('✅ 버튼 클릭! 선택:', choice, 'Player', amPlayer1 ? '1' : '2', 'Room:', roomId);
                         
-                        // 모든 버튼 비활성화 (중복 선택 방지)
+                        // 모든 버튼 즉시 비활성화 (중복 선택 방지)
                         rtChoices.querySelectorAll('.rt-choice').forEach(b => {
                             b.disabled = true;
+                            b.setAttribute('disabled', 'disabled');
                             b.style.opacity = '0.5';
                             b.style.cursor = 'not-allowed';
+                            b.style.pointerEvents = 'none';
                         });
                         
                         try {
@@ -726,17 +804,28 @@ a.btn-again:hover { opacity: 0.95; }
                             // 오류 발생 시 버튼 다시 활성화
                             rtChoices.querySelectorAll('.rt-choice').forEach(b => {
                                 b.disabled = false;
+                                b.removeAttribute('disabled');
                                 b.style.opacity = '1';
                                 b.style.cursor = 'pointer';
+                                b.style.pointerEvents = 'auto';
                             });
                         }
                     });
+                    
+                    // 마우스 오버 이벤트도 추가 (버튼이 작동하는지 확인용)
+                    newBtn.addEventListener('mouseenter', function() {
+                        if (!newBtn.disabled) {
+                            console.log('🖱️ 버튼 호버:', newBtn.dataset.choice);
+                        }
+                    });
                 });
-                console.log('이벤트 리스너 연결 완료');
+                console.log('✅ 이벤트 리스너 연결 완료');
             }
             
-            // 즉시 이벤트 리스너 연결
-            attachChoiceListeners();
+            // 즉시 이벤트 리스너 연결 (초기 설정)
+            setTimeout(() => {
+                attachChoiceListeners();
+            }, 100);
         }
 
         document.getElementById('realtimeBtnAgain').addEventListener('click', async function() {
